@@ -43,6 +43,7 @@ use crate::xmrig_adapter::XmrigAdapter;
 use dirs_next::cache_dir;
 use std::thread;
 use std::time::Duration;
+use tari_key_manager::SeedWords;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct SetupStatusEvent {
@@ -106,6 +107,26 @@ async fn setup_application<'r>(
         },
     );
     Ok(())
+}
+
+#[tauri::command]
+async fn get_seed_words<'r>(
+    window: tauri::Window,
+    state: tauri::State<'r, UniverseAppState>,
+    app: tauri::AppHandle,
+) -> Result<Vec<String>, String> {
+    let config_path = app.path_resolver().app_config_dir().unwrap();
+    let internal_wallet = InternalWallet::load_or_create(config_path)
+        .await
+        .map_err(|e| e.to_string())?;
+    let seed_words = internal_wallet
+        .decrypt_seed_words()
+        .map_err(|e| e.to_string())?;
+    let mut res = vec![];
+    for i in 0..seed_words.len() {
+        res.push(seed_words.get_word(i).unwrap().clone());
+    }
+    Ok(res)
 }
 
 #[tauri::command]
@@ -342,7 +363,8 @@ fn main() {
             setup_application,
             status,
             start_mining,
-            stop_mining
+            stop_mining,
+            get_seed_words
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");

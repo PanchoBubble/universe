@@ -21,6 +21,7 @@ use tari_core::transactions::key_manager::{
     TransactionKeyManagerInterface,
 };
 use tari_key_manager::mnemonic::{Mnemonic, MnemonicLanguage};
+use tari_key_manager::SeedWords;
 use tari_utilities::hex::Hex;
 
 const KEY_MANAGER_COMMS_SECRET_KEY_BRANCH_KEY: &str = "comms";
@@ -122,6 +123,16 @@ impl InternalWallet {
             },
             config,
         ))
+    }
+
+    pub fn decrypt_seed_words(&self) -> Result<SeedWords, anyhow::Error> {
+        let entry = Entry::new("com.tari.universe", "internal_wallet")?;
+        let passphrase = SafePassword::from(entry.get_password()?);
+        let seed_binary = Vec::<u8>::from_base58(&self.config.seed_words_encrypted_base58)
+            .map_err(|e| anyhow!(e.to_string()))?;
+        let seed = CipherSeed::from_enciphered_bytes(&seed_binary, Some(passphrase))?;
+        let seed_words = seed.to_mnemonic(MnemonicLanguage::English, None)?;
+        Ok(seed_words)
     }
 
     pub fn get_view_key(&self) -> String {
