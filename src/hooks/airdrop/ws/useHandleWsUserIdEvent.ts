@@ -35,6 +35,7 @@ export const useHandleWsUserIdEvent = () => {
 
                     setReferrals({
                         ...referrals,
+                        totalActiveReferrals: (referrals?.totalActiveReferrals || 1) - 1,
                         activeReferrals: referralsUpdated,
                     });
                 }

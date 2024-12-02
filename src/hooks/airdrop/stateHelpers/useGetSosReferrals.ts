@@ -22,14 +22,16 @@ export const useGetSosReferrals = () => {
 
     const fetchCrewMemberDetails = useCallback(
         async (userId: string) => {
-            const data = await handleRequest<CrewMember>({
-                path: `/sos/crew-member-data/${userId}/`,
-                method: 'GET',
-            });
+            const existingMember = referrals?.activeReferrals?.find((x) => x.id === userId);
+            let updatedReferrals = [...(referrals?.activeReferrals || [])];
+            if (!existingMember) {
+                const data = await handleRequest<CrewMember>({
+                    path: `/sos/crew-member-data/${userId}/`,
+                    method: 'GET',
+                });
 
-            if (data && data.id) {
-                if (referrals?.activeReferrals?.every((x) => x.id !== data.id)) {
-                    const updatedReferrals = [...(referrals?.activeReferrals || []), data];
+                if (data && data.id) {
+                    updatedReferrals = [...updatedReferrals, data];
 
                     // Remove referrals if there are too many saved crew members
                     if (updatedReferrals.length > MAX_REFERRALS) {
@@ -40,12 +42,22 @@ export const useGetSosReferrals = () => {
                             updatedReferrals.splice(15, 1);
                         }
                     }
-                    setReferrals({
-                        ...referrals,
-                        activeReferrals: updatedReferrals,
-                    });
                 }
-                return data;
+            } else {
+                updatedReferrals = updatedReferrals.map((member) => {
+                    if (member.id === userId) {
+                        return { ...member, active: true };
+                    }
+                    return member;
+                });
+            }
+
+            if (referrals) {
+                setReferrals({
+                    ...referrals,
+                    totalActiveReferrals: (referrals?.totalActiveReferrals || 0) + 1,
+                    activeReferrals: updatedReferrals,
+                });
             }
         },
         [handleRequest, referrals, setReferrals]
