@@ -1,0 +1,7 @@
+./src-tauri/env.esme
+./src-tauri/env.mainnet
+./tari-win-bundler/Bundle.wxs
+./tari-win-bundler/Tari Universe.wixproj
+./tari-win-bundler/Tari Universe.wixproj.user
+./tari-win-bundler/Theme.wxl
+./tari-win-bundler/Theme.xml

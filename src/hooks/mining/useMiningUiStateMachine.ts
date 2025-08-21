@@ -1,61 +1,87 @@
-import { useAppStateStore } from '@app/store/appStateStore';
+import { useCallback, useEffect, useRef } from 'react';
+import { setAnimationState, animationStatus, getTowerLogPrefix } from '@tari-project/tari-tower';
+
 import { useMiningStore } from '@app/store/useMiningStore';
-import { setAnimationState } from '@app/visuals';
-import { useEffect, useRef } from 'react';
-import { useAppConfigStore } from '@app/store/useAppConfigStore';
+import { useMiningMetricsStore } from '@app/store/useMiningMetricsStore.ts';
+import { useSetupStore } from '@app/store/useSetupStore.ts';
+import { useConfigUIStore, useUIStore } from '@app/store';
 
 export const useUiMiningStateMachine = () => {
-    const startMining = useMiningStore((s) => s.startMining);
-    const setIsChangingMode = useMiningStore((s) => s.setIsChangingMode);
-    const isMiningInitiated = useMiningStore((s) => s.miningInitiated);
+    const setupComplete = useSetupStore((s) => s.appUnlocked);
+    const isMiningInitiated = useMiningStore((s) => s.isCpuMiningInitiated || s.isGpuMiningInitiated);
     const isChangingMode = useMiningStore((s) => s.isChangingMode);
-    const cpuIsMining = useMiningStore((s) => s.cpu.mining.is_mining);
-    const gpuIsMining = useMiningStore((s) => s.gpu.mining.is_mining);
-    const isAutoMiningEnabled = useAppConfigStore((s) => s.auto_mining);
-    const isCpuMiningEnabled = useAppConfigStore((s) => s.cpu_mining_enabled);
-    const isGpuMiningEnabled = useAppConfigStore((s) => s.gpu_mining_enabled);
-    const isSetupFinished = !useAppStateStore((s) => s.isSettingUp);
-    const isMiningEnabled = isCpuMiningEnabled || isGpuMiningEnabled;
+    const cpuIsMining = useMiningMetricsStore((s) => s.cpu_mining_status?.is_mining);
+    const gpuIsMining = useMiningMetricsStore((s) => s.gpu_mining_status?.is_mining);
+    const visualMode = useConfigUIStore((s) => s.visual_mode);
+    const visualModeLoading = useConfigUIStore((s) => s.visualModeToggleLoading);
+    const towerInitalized = useUIStore((s) => s.towerInitalized);
+
+    const stateTrigger = animationStatus;
     const isMining = cpuIsMining || gpuIsMining;
 
-    const hasStartedInit = useRef(false);
+    const notStarted = stateTrigger === 'not-started';
+    const preventStop = !setupComplete || isMiningInitiated || isChangingMode;
+    const shouldStop = !isMining && !notStarted && !preventStop;
+    const shouldStart = isMining && notStarted;
 
-    useEffect(() => {
-        async function startMiningAsync() {
-            if (isSetupFinished && !!isAutoMiningEnabled && !!isMiningEnabled && !hasStartedInit.current) {
-                await startMining();
-                hasStartedInit.current = true;
+    const noVisualMode = !visualMode || visualModeLoading;
+
+    const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
+
+    function clearStopTimeout() {
+        if (timeoutIdRef.current) {
+            clearTimeout(timeoutIdRef.current);
+            timeoutIdRef.current = null;
+        }
+    }
+
+    const forceAnimationStop = useCallback(() => {
+        let retryCount = 0;
+        const maxRetries = 15;
+        const interval = 2000; // 2 seconds
+
+        const attemptStop = () => {
+            if (animationStatus === 'not-started') {
+                console.info(getTowerLogPrefix('info'), `Animation stopped: status=${animationStatus}`);
+                return;
             }
-        }
-        startMiningAsync();
-    }, [startMining, isAutoMiningEnabled, isMiningEnabled, isSetupFinished]);
 
-    const statusIndex = window?.glApp?.stateManager?.statusIndex;
+            if (retryCount >= maxRetries) {
+                console.info(
+                    getTowerLogPrefix('warn'),
+                    `Animation Stop failed after ${maxRetries} retries: status=${animationStatus}`
+                );
+                return;
+            }
+
+            setAnimationState('stop');
+            retryCount++;
+
+            timeoutIdRef.current = setTimeout(() => {
+                attemptStop();
+            }, interval);
+        };
+
+        timeoutIdRef.current = setTimeout(() => {
+            attemptStop();
+        }, interval);
+
+        return () => {
+            clearStopTimeout();
+        };
+    }, []);
 
     useEffect(() => {
-        if (isSetupFinished && isMiningEnabled && isMining) {
+        if (noVisualMode || !towerInitalized) return;
+        if (shouldStop) {
+            forceAnimationStop();
+            return;
+        }
+        if (shouldStart) {
             setAnimationState('start');
-            setIsChangingMode(false);
-            return;
         }
-
-        if (isSetupFinished && isMiningEnabled && !isMiningInitiated && !isMining && !isChangingMode) {
-            setAnimationState('stop');
-            return;
-        }
-
-        if (isSetupFinished && isMiningEnabled && isMining && isChangingMode) {
-            setAnimationState('pause');
-            return;
-        }
-    }, [
-        statusIndex,
-        isSetupFinished,
-        isMiningEnabled,
-        isChangingMode,
-        isMining,
-        isAutoMiningEnabled,
-        isMiningInitiated,
-        setIsChangingMode,
-    ]);
+        return () => {
+            clearStopTimeout();
+        };
+    }, [towerInitalized, forceAnimationStop, noVisualMode, shouldStart, shouldStop]);
 };

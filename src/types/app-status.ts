@@ -1,98 +1,138 @@
-import { modeType } from '../store/types';
-
-export interface AppConfig {
-    config_version: number;
-    config_file?: string;
-    mode: modeType;
-    auto_mining: boolean;
-    p2pool_enabled: boolean;
-    last_binaries_update_timestamp: string;
-    allow_telemetry: boolean;
-    anon_id: string;
-    monero_address: string;
-    gpu_mining_enabled: boolean;
-    cpu_mining_enabled: boolean;
+export interface TorConfig {
+    control_port: number;
+    use_bridges: boolean;
+    bridges: string[];
 }
 
-export interface CpuMinerMetrics {
-    hardware?: HardwareParameters;
-    mining: CpuMinerStatus;
+export enum ExternalDependencyStatus {
+    Installed = 'Installed',
+    NotInstalled = 'NotInstalled',
+    Unknown = 'Unknown',
 }
 
-export interface GpuMinerMetrics {
-    hardware?: HardwareParameters;
-    mining: GpuMinerStatus;
+interface Manufacturer {
+    name: string;
+    logo: string;
+    url: string;
+}
+export interface ExternalDependency {
+    required_version_names: string[];
+    display_name: string;
+    display_description: string;
+    download_url: string;
+    version?: string;
+    manufacturer: Manufacturer;
+    status: ExternalDependencyStatus;
 }
 
-export interface MinerMetrics {
-    cpu: CpuMinerMetrics;
-    gpu: GpuMinerMetrics;
-    base_node: BaseNodeStatus;
-}
-
-export interface TariWalletDetails {
-    wallet_balance: WalletBalance;
-    tari_address_base58: string;
-    tari_address_emoji: string;
+export interface TransactionInfo {
+    tx_id: number;
+    source_address: string;
+    dest_address: string;
+    status: number;
+    direction: number;
+    amount: number;
+    fee: number;
+    is_cancelled: boolean;
+    excess_sig: string;
+    timestamp: number;
+    message: string;
+    payment_id: string;
+    mined_in_block_height?: number;
+    payment_reference?: string;
 }
 
 export interface P2poolStatsResult {
-    randomx: P2poolStats;
-    sha3: P2poolStats;
+    connection_info: P2poolConnectionInfo;
+    connected_since?: number;
+    randomx_stats: P2poolStats;
+    sha3x_stats: P2poolStats;
+}
+
+interface P2poolConnectionInfo {
+    listener_addresses: string[];
+    connected_peers: number;
+    network_info: P2poolNetworkInfo;
+}
+
+interface P2poolNetworkInfo {
+    num_peers: number;
+    connection_counters: P2poolConnectionCounters;
+}
+
+interface P2poolConnectionCounters {
+    pending_incoming: number;
+    pending_outgoing: number;
+    established_incoming: number;
+    established_outgoing: number;
 }
 
 export interface P2poolStats {
-    connected: boolean;
-    connected_since?: number;
-    tribe: P2poolTribeDetails;
+    squad: P2poolSquadDetails;
     num_of_miners: number;
-    last_block_won?: P2poolStatsBlock;
     share_chain_height: number;
-    pool_hash_rate: number;
-    pool_total_earnings: number;
-    pool_total_estimated_earnings: P2poolEstimatedEarnings;
-    total_earnings: Record<string, number>;
-    estimated_earnings: Map<string, P2poolEstimatedEarnings>;
-    miner_block_stats: P2poolBlockStats;
+    height?: number;
     p2pool_block_stats: P2poolBlockStats;
 }
 
-export interface P2poolTribeDetails {
+interface PeerInfo {
+    version: number;
+    peer_id?: string;
+    current_sha3x_height: number;
+    current_random_x_height: number;
+    current_sha3x_pow: number;
+    current_random_x_pow: number;
+    squad: string;
+    timestamp: number;
+    user_agent?: string;
+    user_agent_version?: string;
+    public_addresses: string[];
+}
+
+export interface ConnectedPeerInfo {
+    peer_id: string;
+    peer_info: PeerInfo;
+    last_grey_list_reason?: string;
+    last_ping?: string;
+}
+
+export interface P2poolConnections {
+    peers: ConnectedPeerInfo[];
+}
+
+interface P2poolSquadDetails {
     id: string;
     name: string;
 }
 
-export interface P2poolBlockStats {
+interface P2poolBlockStats {
     accepted: number;
     rejected: number;
     submitted: number;
 }
 
-export interface P2poolEstimatedEarnings {
-    one_minute: number;
-    one_hour: number;
-    one_day: number;
-    one_week: number;
-    one_month: number;
+export enum GpuVendor {
+    NVIDIA,
+    AMD,
+    Intel,
+    Unknown,
 }
 
-export interface P2poolStatsBlock {
-    hash: string;
-    height: number;
-    timestamp: number;
-    miner_wallet_address?: string;
+export enum GpuDeviceType {
+    Integrated,
+    Dedicated,
+    Unknown,
 }
 
-export interface HardwareParameters {
-    label: string;
-    usage_percentage: number;
-    current_temperature: number;
-    max_temperature: number;
-}
-
-export interface HardwareStatus {
-    cpu: HardwareParameters;
-    gpu: HardwareParameters;
+export interface GpuDevice {
+    name: string;
+    device_id: number;
+    platform_name: string;
+    vendor: GpuVendor;
+    max_work_group_size: number;
+    max_compute_units: number;
+    global_mem_size: number;
+    device_type: GpuDeviceType;
 }
 
 export interface CpuMinerStatus {
@@ -102,12 +142,15 @@ export interface CpuMinerStatus {
     connection: CpuMinerConnectionStatus;
 }
 
-export interface CpuMinerConnectionStatus {
-    is_connected: boolean;
+export interface PoolStats {
+    accepted_shares: number;
+    unpaid: number;
+    balance: number;
+    min_payout: number;
 }
 
-export interface EstimatedEarnings {
-    estimated_earnings: number;
+interface CpuMinerConnectionStatus {
+    is_connected: boolean;
 }
 
 export interface GpuMinerStatus {
@@ -118,25 +161,58 @@ export interface GpuMinerStatus {
 }
 
 export interface BaseNodeStatus {
+    sha_network_hashrate: number;
+    monero_randomx_network_hashrate: number;
+    tari_randomx_network_hashrate: number;
+    block_reward: number;
     block_height: number;
     block_time: number;
     is_synced: boolean;
-    is_connected: boolean;
-    connected_peers: string[];
+    num_connections: number;
+    readiness_status: string;
 }
 
 export interface WalletBalance {
-    available_balance?: number;
-    timelocked_balance?: number;
-    pending_incoming_balance?: number;
-    pending_outgoing_balance?: number;
+    available_balance: number;
+    timelocked_balance: number;
+    pending_incoming_balance: number;
+    pending_outgoing_balance: number;
+}
+
+interface ApplicationsInformation {
+    version: string;
+    port?: number;
 }
 
 export interface ApplicationsVersions {
-    tari_universe: string;
-    xmrig: string;
-    minotari_node: string;
-    mm_proxy: string;
-    wallet: string;
-    sha_p2pool: string;
+    tari_universe: ApplicationsInformation;
+    xmrig: ApplicationsInformation;
+    minotari_node: ApplicationsInformation;
+    mm_proxy: ApplicationsInformation;
+    wallet: ApplicationsInformation;
+    sha_p2pool: ApplicationsInformation;
+    bridge: ApplicationsInformation;
+}
+
+export interface PaperWalletDetails {
+    qr_link: string;
+    password: string;
+}
+
+export interface NetworkStatus {
+    download_speed: number;
+    upload_speed: number;
+    latency: number;
+    is_too_low: boolean;
+}
+
+export interface BridgeEnvs {
+    walletconnect_id: string;
+    backend_api: string;
+}
+
+export interface TariAddressVariants {
+    emoji_string: string;
+    base58: string;
+    hex: string;
 }

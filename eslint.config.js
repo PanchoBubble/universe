@@ -1,7 +1,9 @@
+import reactCompiler from 'eslint-plugin-react-compiler';
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import react from 'eslint-plugin-react';
 import hooksPlugin from 'eslint-plugin-react-hooks';
+import i18next from 'eslint-plugin-i18next';
 
 import prettierConfig from 'eslint-config-prettier';
 import prettierPluginConfig from 'eslint-plugin-prettier/recommended';
@@ -28,21 +30,28 @@ export default [
             parser: tsParser,
             parserOptions: { ecmaFeatures: { jsx: true } },
         },
-        files: ['src/**/*.{js,ts,jsx,tsx}'],
+        files: ['src/**/*.{js,ts,jsx,tsx}', 'scripts/**/*.{js,ts,jsx,tsx}'],
         ignores: ['./**/*.config.{js,ts}'],
-        plugins: { react, 'react-hooks': hooksPlugin },
+        plugins: { react, 'react-hooks': hooksPlugin, i18next },
         rules: {
             ...react.configs.recommended.rules,
             ...hooksPlugin.configs.recommended.rules,
+            'no-console': ['warn', { allow: ['info', 'warn', 'debug', 'error'] }],
+            'no-unused-vars': 'off', // base rule must be disabled
+            '@typescript-eslint/no-unused-vars': [
+                'warn',
+                {
+                    argsIgnorePattern: '^_',
+                    varsIgnorePattern: '^_',
+                    caughtErrorsIgnorePattern: '^_',
+                },
+            ],
+            '@typescript-eslint/no-explicit-any': 'warn',
+            'react/prop-types': 'off',
             'react/jsx-uses-react': 'off',
             'react/react-in-jsx-scope': 'off',
-            'no-console': [
-                'warn',
-                { allow: ['info', 'warn', 'debug', 'error', 'group', 'groupCollapsed', 'groupEnd'] },
-            ],
-            'react/prop-types': 'off',
-            '@typescript-eslint/no-explicit-any': 'warn',
-            '@typescript-eslint/no-unused-vars': 'warn',
+            'i18next/no-literal-string': ['error', { markupOnly: true }],
         },
     },
+    reactCompiler.configs.recommended,
 ];

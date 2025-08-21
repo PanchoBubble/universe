@@ -1,7 +1,11 @@
 import { createGlobalStyle } from 'styled-components';
+import { TOWER_CANVAS_ID } from '@app/store/types/ui.ts';
 
 export const GlobalReset = createGlobalStyle`
-    
+    *:focus {
+        outline: none;
+    }
+
     button {
         -webkit-appearance: none;
         border-radius: 0;
@@ -13,12 +17,20 @@ export const GlobalReset = createGlobalStyle`
         border: none;
         color: inherit;
         font: inherit;
-        &:focus {
-            outline: none;
+
+        &:focus-visible {
+            outline: 2px solid ${({ theme }) => theme.palette.focusOutline};
+            outline-offset: 2px;
+            transition: none;
         }
     }
-    input{
+
+    fieldset,
+    textarea,
+    dialog,
+    input {
         all: unset;
+
         /* Chrome, Safari, Edge, Opera */
         &::-webkit-outer-spin-button,
         &::-webkit-inner-spin-button {
@@ -27,169 +39,77 @@ export const GlobalReset = createGlobalStyle`
         }
 
         /* Firefox */
-        &[type=number] {
+        &[type="number"] {
             -moz-appearance: textfield;
         }
 
-        &:focus {
-            outline: none;
+        &:focus-visible {
+            outline: 2px solid ${({ theme }) => theme.palette.focusOutline};
+            outline-offset: 2px;
+            transition: none;
         }
     }
 `;
-export const GlobalStyle = createGlobalStyle`
-    @font-face {
-        font-family: "AvenirRegular";
-        src: url("/assets/fonts/AvenirLTStd-Book.otf") format("otf");
-        font-display: fallback;
-    }
 
-    @font-face {
-        font-family: "AvenirMedium";
-        src: url("/assets/fonts/AvenirLTStd-Medium.otf") format("otf");
-        font-display: fallback;
-    }
-
-    @font-face {
-        font-family: "AvenirHeavy";
-        src: url("/assets/fonts/AvenirLTStd-Heavy.otf") format("otf");
-        font-display: fallback;
-    }
-
-    @font-face {
-        font-family: "Poppins";
-        font-weight: 200;
-        font-style: normal;
-        src:
-                url("/assets/fonts/Poppins/Poppins-ExtraLight.woff2") format("woff2"),
-                url("/assets/fonts/Poppins/Poppins-ExtraLight.woff") format("woff"),
-                url("/assets/fonts/Poppins/Poppins-ExtraLight.ttf") format("truetype");
-        font-display: fallback;
-    }
-    @font-face {
-        font-family: "Poppins";
-        font-weight: 300;
-        font-style: normal;
-        src:
-                url("/assets/fonts/Poppins/Poppins-Light.woff2") format("woff2"),
-                url("/assets/fonts/Poppins/Poppins-Light.woff") format("woff"),
-                url("/assets/fonts/Poppins/Poppins-Light.ttf") format("truetype");
-        font-display: fallback;
-    }
-    @font-face {
-        font-family: "Poppins";
-        font-weight: 400;
-        font-style: normal;
-        src:
-                url("/assets/fonts/Poppins/Poppins-Regular.woff2") format("woff2"),
-                url("/assets/fonts/Poppins/Poppins-Regular.woff") format("woff"),
-                url("/assets/fonts/Poppins/Poppins-Regular.ttf") format("truetype");
-        font-display: fallback;
-    }
-    @font-face {
-        font-family: "Poppins";
-        font-weight: 500;
-        font-style: normal;
-        src:
-                url("/assets/fonts/Poppins/Poppins-Medium.woff2") format("woff2"),
-                url("/assets/fonts/Poppins/Poppins-Medium.woff") format("woff"),
-                url("/assets/fonts/Poppins/Poppins-Medium.ttf") format("truetype");
-        font-display: fallback;
-    }
-    @font-face {
-        font-family: "Poppins";
-        font-weight: 600;
-        font-style: normal;
-        src:
-                url("/assets/fonts/Poppins/Poppins-SemiBold.woff2") format("woff2"),
-                url("/assets/fonts/Poppins/Poppins-SemiBold.woff") format("woff"),
-                url("/assets/fonts/Poppins/Poppins-SemiBold.ttf") format("truetype");
-        font-display: fallback;
-    }
-    @font-face {
-        font-family: "Poppins";
-        font-weight: 700;
-        font-style: normal;
-        src:
-                url("/assets/fonts/Poppins/Poppins-Bold.woff2") format("woff2"),
-                url("/assets/fonts/Poppins/Poppins-Bold.woff") format("woff"),
-                url("/assets/fonts/Poppins/Poppins-Bold.ttf") format("truetype");
-        font-display: fallback;
-    }
-    @font-face {
-        font-family: "Poppins";
-        font-weight: 800;
-        font-style: normal;
-        src:
-                url("/assets/fonts/Poppins/Poppins-ExtraBold.woff2") format("woff2"),
-                url("/assets/fonts/Poppins/Poppins-ExtraBold.woff") format("woff"),
-                url("/assets/fonts/Poppins/Poppins-ExtraBold.ttf") format("truetype");
-        font-display: fallback;
-    }
-    @font-face {
-        font-family: "Poppins";
-        font-weight: 900;
-        font-style: normal;
-        src:
-                url("/assets/fonts/Poppins/Poppins-Black.woff2") format("woff2"),
-                url("/assets/fonts/Poppins/Poppins-Black.woff") format("woff"),
-                url("/assets/fonts/Poppins/Poppins-Black.ttf") format("truetype");
-        font-display: fallback;
-    }
-
-    @font-face {
-        font-family: "Druk";
-        src: url("/assets/fonts/Druk/DrukWideLCG-Bold.ttf") format("truetype");
-        font-weight: 700;
-        font-style: normal;
-        font-display: fallback;
-    }
-
-    @font-face {
-        font-family: "Druk";
-        src: url("/assets/fonts/Druk/DrukWideLCG-Heavy.ttf") format("truetype");
-        font-weight: 900;
-        font-style: normal;
-        font-display: fallback;
-    }
-
+export const GlobalStyle = createGlobalStyle<{ $hideCanvas?: boolean }>`
     html,
     main,
     body,
     #root {
         margin: 0;
         padding: 0;
-        font-family: "PoppinsMedium", sans-serif;
+        font-family: Poppins, sans-serif;
+        font-size: 16px;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
-        border-radius: 12px;
         height: 100%;
         min-height: 100vh;
         min-width: 100vw;
         width: 100%;
         box-sizing: border-box;
         position: relative;
+        overflow: hidden;
+        transition:
+                color 0.2s ease,
+                background-color 0.2s ease,
+                background 0.2s ease;
+
         ::-webkit-scrollbar {
             display: none;
         }
+
         -ms-overflow-style: none; /* IE and Edge */
         scrollbar-width: none; /* Firefox */
         letter-spacing: -0.02px;
         font-weight: 400;
+
+        color: ${({ theme }) => theme.palette.text.primary};
+        
         * {
             box-sizing: border-box;
+
             ::-webkit-scrollbar {
                 display: none;
             }
+
             -ms-overflow-style: none; /* IE and Edge */
             scrollbar-width: none; /* Firefox */
         }
     }
 
-    #canvas {
-        z-index: 0;
-        pointer-events: auto;
+    
+    html {
+        background: ${({ theme }) => theme.palette.background.main};
     }
-    #root {
-        pointer-events: none;
+    #${TOWER_CANVAS_ID} {
+        z-index: 0;
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: auto;
+        width: 100vw;
+        background: none;
+        transition: visibility .1s ease;
+        visibility: ${({ $hideCanvas }) => (!$hideCanvas ? 'visible' : 'hidden')};
     }
 `;

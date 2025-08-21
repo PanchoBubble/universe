@@ -1,0 +1,111 @@
+{
+  "airdropGame": "エアドロップゲーム",
+  "bonus-gems-earned": "ボーナスジェムを獲得しました",
+  "claimGems": "ジェムを請求",
+  "claimModalFieldLabel": "任意",
+  "claimModalFieldPlaceholder": "紹介コードを入力",
+  "claimModalFinePrint": "<strong>ご注意ください:</strong> ジェムを請求すると、Universeを改善するために分析が有効になります",
+  "claimModalText": "テストネット中にマイニングと友達紹介でジェムを獲得し、エアドロップ報酬を増やしましょう！紹介コードがありますか？以下に入力して、あなたと友達に追加の<strong>{{gems}}</strong>ジェムを獲得しましょう！",
+  "claimModalTitle": "テストネットでのマイニングで報酬を獲得",
+  "claimReferralCode": "紹介コードを請求して<span>{{gems}}<image src=\"/assets/images/gem.png\" alt=\"\"/></span>ジェムを獲得。",
+  "claimReferralGifts": "紹介コードを請求して{{gems}}ジェムを獲得。アカウントを接続すると、ジェムが付与されます。",
+  "copied": "コピーしました！",
+  "copyFailed": "コピーに失敗しました",
+  "copying": "コピー中...",
+  "doLater": "後で行います",
+  "gems": "ジェム",
+  "giftReferralCode": "Tari Universeに招待した友達ごとに{{gems}}ジェムを獲得。彼らがアカウントを接続すると、ジェムが付与されます。",
+  "giftReferralCodeHeader": "紹介コードを請求して<span>{{gems}}<image src=\"/assets/images/gem.png\" alt=\"\"/></span>ジェムを獲得。",
+  "invite": "招待",
+  "invite-friends-gems": "招待リンクを使用する友達ごとに、5,000ジェムを受け取ります。",
+  "inviteFriends": "友達を招待",
+  "inviteFriendsText": "リンクをコピーして共有する",
+  "invitedAmount": "あなたは<span>{{count}}</span>人の友達を招待しました",
+  "joinAirdrop": "エアドロップに参加",
+  "joinAirdropButtonAriaLabel": "エアドロップに参加してジェムを獲得。右クリックでリンクをコピー",
+  "keep-mining-to-earn-rewards": "さらに報酬を得るためにマイニングを続けましょう！",
+  "linkCopied": "リンクがコピーされました！",
+  "live": "ライブ",
+  "logged-in-as": "<strong>@{{twitter}}</strong> としてログイン中",
+  "loggedInTitle": "エアドロップ報酬",
+  "loggedOutTitle": "友達を招待してジェムを獲得",
+  "loginButton": "ログインしてジェムを獲得",
+  "logout": "ログアウト",
+  "nextTierBonus": "<strong>{{count}}人の友達</strong>を招待して、{{bonusGems}}ボーナスジェムを獲得",
+  "permission": {
+    "setup": "Tari Universeは、<strong>あなたの体験を向上させるために</strong>分析を使用したいと考えています。",
+    "text": "Tari Universeは、分析を使用して体験を向上させ、友達を招待することでジェムを報酬として提供したいと考えています。",
+    "title": "ジェムを獲得してTari Universeをより良くする"
+  },
+  "permissionNoGems": {
+    "text": "Tari Universeは、あなたの体験を向上させるために分析を使用したいと考えています。",
+    "title": "Tari Universeをより良くする"
+  },
+  "push-notifications": {
+    "text": "Tari Universeは接続されたデバイスに通知を送信したいと考えています",
+    "title": "Tari Universeが通知を送信することを許可"
+  },
+  "referral": "友達を招待",
+  "rightClickToCopy": "右クリックでリンクをコピー",
+  "success": "成功",
+  "topTooltipText": "ジェムを集めてTariのエアドロップを獲得しましょう。ジェムを多く集めるほど、エアドロップが大きくなります。",
+  "topTooltipTitle": "テストネット報酬",
+  "unclaimedGems": "未請求のジェム",
+  "update-username": "ユーザー名を更新",
+  "username-error": "ユーザー名は3-20文字で、文字、数字、アンダースコア、ハイフンのみを含む必要があります",
+  "username-update-success": "ユーザー名が正常に更新されました",
+  "you-reached-your-giftinh-goal": "ギフト目標を達成しました！",
+  "your-friend-accepted-gift": "あなたの友達の一人があなたのギフトを受け取りました！",
+  "crewRewards": {
+    "title": "Rewards",
+    "myCrew": "My Crew",
+    "earnDescription": "Earn <strong>{{userReward}} XTM</strong> for every <strong>{{daysRequired}} days</strong> your friend mines. Your friend will also earn <strong>{{friendReward}} XTM</strong>.",
+    "inviteFriends": "Invite Friends",
+    "copied": "Copied!",
+    "activeMinersStat": "Active Miners",
+    "bonusXTMEarned": "Bonus XTM Earned",
+    "of": "of",
+    "inviteFriendsMessage": "Invite friends and start earning <strong>bonus XTM!</strong>",
+    "errorLoadingData": "Error loading crew data. Please try again.",
+    "filters": {
+      "all": "All",
+      "complete": "Complete",
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "crewStatus": {
+      "completed": "Completed",
+      "inProgress": "In Progress",
+      "needsNudge": "Needs Nudge"
+    },
+    "actions": {
+      "claimed": "Claimed",
+      "claim": "Claim {{amount}} XTM",
+      "nudge": "Nudge"
+    },
+    "streak": {
+      "unlockBonusRewards": "Unlock your bonus rewards",
+      "mineConsecutiveDays": "Mine for at least <strong>{{streakDaysRequired}} consecutive days</strong> each week to earn your bonus XTM.",
+      "keepStreak": "Keep your streak to keep earning rewards!",
+      "dayStreak": "{{days}} Day Streak",
+      "day": "Day",
+      "loadingStreak": "Loading streak...",
+      "startYourStreak": "Start Your Streak!",
+      "oneDayStreak": "1 Day Streak",
+      "multiDayStreak": "{{days}} Day Streak",
+      "startMiningMessage": "Start mining to begin your streak and earn rewards!",
+      "minimumRequirementsMet": "You've met the minimum requirements. Keep going!",
+      "daysToMinimum": "{{days}} more days to meet minimum requirements!"
+    },
+    "login": {
+      "title": "Mine with friends. <strong>Earn together.</strong>",
+      "description": "You earn <strong>{{userReward}} bonus XTM/week</strong> AND your friend earns <strong>{{friendReward}} bonus XTM/week</strong> when you and your friend both mine",
+      "bonusText": "Earn bonus rewards up to {{maxWeeks}} weeks per invite",
+      "loginButton": "Log in & Start Earning!"
+    },
+    "feedback": {
+      "nudgeSent": "Nudge sent!",
+      "rewardClaimed": "Reward claimed!"
+    }
+  }
+}

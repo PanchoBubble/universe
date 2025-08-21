@@ -1,40 +1,50 @@
 import { create } from './create';
-import { backgroundType, viewType } from './types.ts';
+import { Theme } from '@app/theme/types.ts';
+import { AdminShow, CONNECTION_STATUS, DialogType, sidebarTowerOffset, SidebarType } from '@app/store/types/ui.ts';
 
-interface State {
-    showSplash: boolean;
-    background: backgroundType;
-    view: viewType;
-    visualMode: boolean;
+interface UIStoreState {
+    theme: Theme;
+    preferredTheme: Theme;
+    currentSidebar: SidebarType;
+    latestVersion?: string;
     sidebarOpen: boolean;
     showExperimental: boolean;
+    showExternalDependenciesDialog: boolean;
+    dialogToShow?: DialogType;
+    isWebglNotSupported: boolean;
+    adminShow?: AdminShow;
+    connectionStatus?: CONNECTION_STATUS;
+    isReconnecting?: boolean;
+    shouldShowExchangeSpecificModal: boolean;
+    showSplashscreen: boolean;
+    hideWalletBalance: boolean;
+    showResumeAppModal: boolean;
+    towerSidebarOffset: number;
+    towerInitalized: boolean;
+    showTapplet: boolean;
 }
-interface Actions {
-    setShowSplash: (showSplash: boolean) => void;
-    setBackground: (background: State['background']) => void;
-    setView: (view: State['view']) => void;
-    toggleVisualMode: () => void;
-    setSidebarOpen: (sidebarOpen: State['sidebarOpen']) => void;
-    setShowExperimental: (showExperimental: boolean) => void;
-}
+const preferredTheme = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 
-type UIStoreState = State & Actions;
-
-const initialState: State = {
-    showSplash: true,
-    background: 'onboarding',
-    view: 'setup',
-    visualMode: true,
+const initialState: UIStoreState = {
+    isWebglNotSupported: false,
+    theme: preferredTheme,
+    preferredTheme,
     sidebarOpen: false,
+    currentSidebar: 'mining',
+    dialogToShow: null,
     showExperimental: false,
+    showExternalDependenciesDialog: false,
+    connectionStatus: 'connected',
+    isReconnecting: false,
+    showSplashscreen: true,
+    hideWalletBalance: false,
+    showResumeAppModal: false,
+    shouldShowExchangeSpecificModal: false,
+    towerSidebarOffset: sidebarTowerOffset,
+    towerInitalized: false,
+    showTapplet: false,
 };
 
-export const useUIStore = create<UIStoreState>()((set) => ({
+export const useUIStore = create<UIStoreState>()(() => ({
     ...initialState,
-    setShowSplash: (showSplash) => set({ showSplash }),
-    setBackground: (background) => set({ background }),
-    setView: (view) => set({ view }),
-    toggleVisualMode: () => set((state) => ({ visualMode: !state.visualMode })),
-    setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
-    setShowExperimental: (showExperimental) => set({ showExperimental }),
 }));

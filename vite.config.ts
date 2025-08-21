@@ -1,35 +1,63 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import eslintPlugin from '@nabla/vite-plugin-eslint';
-import tsconfigPaths from 'vite-tsconfig-paths';
+import { defineConfig, UserConfig } from 'vite';
 import * as path from 'node:path';
+import react from '@vitejs/plugin-react';
+import tsconfigPaths from 'vite-tsconfig-paths';
+import eslintPlugin from '@nabla/vite-plugin-eslint';
 
-// https://vitejs.dev/config/
+const ReactCompilerConfig = {
+    sources: (filename) => {
+        return filename.indexOf('src/App') !== -1;
+    },
+};
 
-export default defineConfig(() => {
-    return {
-        // prevent vite from obscuring rust errors
-        clearScreen: false,
-        // Tauri expects a fixed port, fail if that port is not available
-        server: {
-            port: 1420,
-            strictPort: true,
-            watch: {
-                // 3. tell vite to ignore watching `src-tauri`
-                ignored: ['**/src-tauri/**'],
-            },
+const plugins: UserConfig['plugins'] = [
+    react({
+        babel: {
+            plugins: [
+                [
+                    'babel-plugin-styled-components',
+                    {
+                        displayName: true,
+                        fileName: true,
+                    },
+                ],
+                ['babel-plugin-react-compiler', ReactCompilerConfig],
+            ],
         },
-        plugins: [
-            react({
-                babel: { plugins: ['styled-components'] },
-            }),
-            tsconfigPaths(),
-            eslintPlugin({ eslintOptions: { cache: false } }),
-        ],
-        resolve: {
-            alias: {
-                '@app': path.resolve(__dirname, './src'),
-            },
+    }),
+    tsconfigPaths(),
+    eslintPlugin({ eslintOptions: { cache: false } }),
+];
+const baseOptions: UserConfig = {
+    plugins,
+    resolve: {
+        alias: {
+            '@app': path.resolve(__dirname, './src'),
+        },
+    },
+    logLevel: 'error',
+};
+
+const devOptions: UserConfig = {
+    clearScreen: false,
+    server: {
+        port: 1420,
+        strictPort: true,
+        watch: {
+            ignored: ['**/src-tauri/**'],
+        },
+    },
+};
+
+export default defineConfig(({ command }) => {
+    if (command === 'serve') {
+        return { ...devOptions, ...baseOptions };
+    }
+    return {
+        ...baseOptions,
+        plugins,
+        build: {
+            sourcemap: true,
         },
     };
 });

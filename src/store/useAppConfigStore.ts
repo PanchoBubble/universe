@@ -1,138 +1,111 @@
-import { invoke } from '@tauri-apps/api';
-import { create } from './create';
-import { AppConfig } from '../types/app-status.ts';
-import { useAppStateStore } from './appStateStore.ts';
-import { modeType } from './types.ts';
-import { useMiningStore } from '@app/store/useMiningStore.ts';
+import { create } from 'zustand';
+import {
+    ConfigBackendInMemory,
+    ConfigCore,
+    ConfigMining,
+    ConfigMiningSelectors,
+    ConfigPools,
+    ConfigUI,
+    ConfigWallet,
+} from '@app/types/configs';
+import { WalletUIMode } from '@app/types/events-payloads';
 
-type State = Partial<AppConfig>;
-
-interface Actions {
-    fetchAppConfig: () => Promise<void>;
-    setAllowTelemetry: (allowTelemetry: boolean) => Promise<void>;
-    setCpuMiningEnabled: (enabled: boolean) => Promise<void>;
-    setGpuMiningEnabled: (enabled: boolean) => Promise<void>;
-    setP2poolEnabled: (p2poolEnabled: boolean) => Promise<void>;
-    setMoneroAddress: (moneroAddress: string) => Promise<void>;
-    setMode: (mode: modeType) => Promise<void>;
-}
-
-type AppConfigStoreState = State & Actions;
-
-const initialState: State = {
-    config_version: 0,
-    config_file: undefined,
-    mode: 'Eco',
-    auto_mining: true,
-    p2pool_enabled: false,
-    last_binaries_update_timestamp: '0',
+type UIConfigStoreState = Partial<ConfigUI> & {
+    visualModeToggleLoading: boolean;
+};
+const configCoreInitialState: ConfigCore = {
+    created_at: '',
     allow_telemetry: false,
+    allow_notifications: true,
     anon_id: '',
-    monero_address: '',
-    gpu_mining_enabled: true,
-    cpu_mining_enabled: true,
+    auto_update: false,
+    is_p2pool_enabled: false,
+    last_changelog_version: '',
+    mmproxy_monero_nodes: [],
+    mmproxy_use_monero_failover: false,
+    pre_release: false,
+    remote_base_node_address: '',
+    should_auto_launch: false,
+    use_tor: false,
+    airdrop_tokens: undefined,
+    last_binaries_update_timestamp: '',
+    p2pool_stats_server_port: undefined,
+    exchange_id: undefined,
 };
 
-export const useAppConfigStore = create<AppConfigStoreState>()((set) => ({
-    ...initialState,
-    fetchAppConfig: async () => {
-        try {
-            const appConfig = await invoke('get_app_config');
-            set(appConfig);
-        } catch (e) {
-            console.error('Could not get app config: ', e);
-        }
-    },
-    setAllowTelemetry: async (allowTelemetry) => {
-        set({ allow_telemetry: allowTelemetry });
-        invoke('set_allow_telemetry', { allowTelemetry }).catch((e) => {
-            const appStateStore = useAppStateStore.getState();
-            console.error('Could not set telemetry mode to ', allowTelemetry, e);
-            appStateStore.setError('Could not change telemetry mode');
-            set({ allow_telemetry: !allowTelemetry });
-        });
-    },
-    setCpuMiningEnabled: async (enabled) => {
-        set({ cpu_mining_enabled: enabled });
-        const miningState = useMiningStore.getState();
-        if (miningState.cpu.mining.is_mining || miningState.gpu.mining.is_mining) {
-            await miningState.pauseMining();
-        }
-        invoke('set_cpu_mining_enabled', { enabled })
-            .then(async () => {
-                if (miningState.miningInitiated) {
-                    await miningState.startMining();
-                }
-            })
-            .catch((e) => {
-                const appStateStore = useAppStateStore.getState();
-                console.error('Could not set CPU mining enabled', e);
-                appStateStore.setError('Could not change CPU mining enabled');
-                set({ cpu_mining_enabled: !enabled });
+const configWalletInitialState: ConfigWallet = {
+    created_at: '',
+    keyring_accessed: false,
+    monero_address: '',
+    monero_address_is_generated: false,
+    wxtm_addresses: {},
+};
 
-                if (
-                    miningState.miningInitiated &&
-                    !miningState.cpu.mining.is_mining &&
-                    !miningState.gpu.mining.is_mining
-                ) {
-                    miningState.stopMining();
-                }
-            });
-    },
-    setGpuMiningEnabled: async (enabled) => {
-        set({ gpu_mining_enabled: enabled });
-        const miningState = useMiningStore.getState();
-        if (miningState.cpu.mining.is_mining || miningState.gpu.mining.is_mining) {
-            await miningState.pauseMining();
-        }
-        invoke('set_gpu_mining_enabled', { enabled })
-            .then(async () => {
-                if (miningState.miningInitiated) {
-                    await miningState.startMining();
-                }
-            })
-            .catch((e) => {
-                const appStateStore = useAppStateStore.getState();
-                console.error('Could not set GPU mining enabled', e);
-                appStateStore.setError('Could not change GPU mining enabled');
-                set({ gpu_mining_enabled: !enabled });
+const configMininigInitialState: ConfigMining = {
+    created_at: '',
+    cpu_mining_enabled: true,
+    gpu_engine: '',
+    gpu_mining_enabled: true,
+    mine_on_app_start: false,
+    mining_modes: {},
+    selected_mining_mode: 'Eco',
+    gpu_devices_settings: {},
+};
 
-                if (
-                    miningState.miningInitiated &&
-                    !miningState.cpu.mining.is_mining &&
-                    !miningState.gpu.mining.is_mining
-                ) {
-                    miningState.stopMining();
-                }
-            });
-    },
-    setP2poolEnabled: async (p2poolEnabled) => {
-        set({ p2pool_enabled: p2poolEnabled });
-        invoke('set_p2pool_enabled', { p2pool_enabled: p2poolEnabled }).catch((e) => {
-            const appStateStore = useAppStateStore.getState();
-            console.error('Could not set P2pool enabled', e);
-            appStateStore.setError('Could not change P2pool enabled');
-            set({ p2pool_enabled: !p2poolEnabled });
-        });
-    },
-    setMoneroAddress: async (moneroAddress) => {
-        const prevMoneroAddress = useAppConfigStore.getState().monero_address;
-        set({ monero_address: moneroAddress });
-        invoke('set_monero_address', { moneroAddress }).catch((e) => {
-            const appStateStore = useAppStateStore.getState();
-            console.error('Could not set Monero address', e);
-            appStateStore.setError('Could not change Monero address');
-            set({ monero_address: prevMoneroAddress });
-        });
-    },
-    setMode: async (mode) => {
-        const prevMode = useAppConfigStore.getState().mode;
-        set({ mode });
-        invoke('set_mode', { mode }).catch((e) => {
-            const appStateStore = useAppStateStore.getState();
-            console.error('Could not set mode', e);
-            appStateStore.setError('Could not change mode');
-            set({ mode: prevMode });
-        });
-    },
+const configUIInitialState: UIConfigStoreState = {
+    visualModeToggleLoading: false,
+    created_at: '',
+    application_language: 'en',
+    display_mode: 'Eco',
+    has_system_language_been_proposed: false,
+    sharing_enabled: true,
+    show_experimental_settings: false,
+    should_always_use_system_language: false,
+    visual_mode: true,
+    wallet_ui_mode: WalletUIMode.Standard,
+    was_staged_security_modal_shown: false,
+};
+
+const configPoolsInitialState: ConfigPools = {
+    was_config_migrated: false,
+    created_at: '',
+    cpu_pool_enabled: false,
+    gpu_pool_enabled: false,
+    available_cpu_pools: undefined,
+    available_gpu_pools: undefined,
+    selected_cpu_pool: undefined,
+    selected_gpu_pool: undefined,
+};
+
+const configBEInMemoryInitialState: ConfigBackendInMemory = {
+    airdrop_url: '',
+    airdrop_api_url: '',
+    airdrop_twitter_auth_url: '',
+    exchange_id: '',
+    bridge_backend_api_url: '',
+};
+
+export const useConfigCoreStore = create<ConfigCore>()(() => ({
+    ...configCoreInitialState,
+}));
+
+export const useConfigWalletStore = create<ConfigWallet>()(() => ({
+    ...configWalletInitialState,
+}));
+
+export const useConfigMiningStore = create<ConfigMining & ConfigMiningSelectors>()((_, get) => ({
+    ...configMininigInitialState,
+    getSelectedMiningMode: () => get().mining_modes[get().selected_mining_mode] || undefined,
+}));
+
+export const useConfigUIStore = create<UIConfigStoreState>()(() => ({
+    ...configUIInitialState,
+}));
+
+export const useConfigPoolsStore = create<ConfigPools>()(() => ({
+    ...configPoolsInitialState,
+}));
+
+export const useConfigBEInMemoryStore = create<ConfigBackendInMemory>()(() => ({
+    ...configBEInMemoryInitialState,
 }));

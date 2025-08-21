@@ -1,11 +1,44 @@
 {
-    "field-error-message": {
-        "invalid": "Alan geçersiz",
-        "required": "Alan gerekli",
-        "password-too-short": "Şifre en az 8 karakterden oluşmalıdır",
-        "invalid-url": "Geçerli bir URL adresi olmalıdır",
-        "invalid-email": "Geçerli bir e-posta adresi girin",
-        "invalid-date": "Geçersiz tarih",
-        "integers-only": "Sadece Tamsayılara İzin Verilir"
-    }
+  "banner": {
+    "body-copy": "Ağ önümüzdeki ~15 gün boyunca yerleşirken çatallar ve hash rate dalgalanmaları yaşayabilirsiniz.",
+    "body-copy-highlight": "Tari yepyeni!",
+    "is-live": "canlı"
+  },
+  "field-error-message": {
+    "integers-only": "Sadece Tamsayılara İzin Verilir",
+    "invalid": "Alan geçersiz",
+    "invalid-date": "Geçersiz tarih",
+    "invalid-email": "Geçerli bir e-posta adresi girin",
+    "invalid-url": "Geçerli bir URL adresi olmalıdır",
+    "password-too-short": "Şifre en az 8 karakterden oluşmalıdır",
+    "required": "Alan gerekli"
+  },
+  "ludicrousConfirmationDialog": {
+    "cancel": "İptal",
+    "description": "Aşırı mod sisteminizi yanıtsız hale getirebilir. Lütfen Aşırı modda madenciliğe başlamak istediğinizi onaylayın, aksi takdirde Tari Universe Eco moduna geri dönecektir",
+    "keepChanges": "Değişiklikleri Sakla",
+    "seconds": "saniye",
+    "title": "Aşırı Moda Geçilsin mi?"
+  },
+  "releaseNotesDialog": {
+    "close": "Anladım",
+    "title": "Sürüm Notları"
+  },
+  "resume-app-modal": {
+    "finishing-resume": "Devam Etme Tamamlanıyor...",
+    "resuming-all-processes": "Tüm işlemler devam ediyor...",
+    "resuming-mm-proxy": "MM Proxy Devam Ediyor...",
+    "resuming-node": "Düğüm Devam Ediyor...",
+    "resuming-p2pool": "P2Pool Devam Ediyor...",
+    "resuming-tor": "Tor Devam Ediyor...",
+    "resuming-wallet": "Cüzdan Devam Ediyor...",
+    "syncing-node": "Düğüm Senkronize Ediliyor...",
+    "title": "Tari Universe Devam Ediyor"
+  },
+  "warmupDialog": {
+    "copy": "Bir iş kanıtı ağının doğuşu özeldir. İlk günlerde, ağın istikrar kazanması ve ritmini bulması için zamana ihtiyacı vardır. Buna \"ısınma aşaması\" diyoruz.\nTari ağının katkıda bulunanları ve erken destekçileri (borsalar ve altyapı ortakları gibi) ısınma aşamasının yaklaşık 15 gün sürmesini bekliyor. Bundan sonra, ağ daha istikrarlı bir duruma geçecektir.\nIsınma aşamasında bazı tuhaflıklar normaldir. Blok zamanı dalgalanmaları, geçici bağlantı kesilmeleri, senkronizasyon gecikmeleri veya ana zincire yeniden bağlanmanızı gerektiren kısa ömürlü çatallar görebilirsiniz.\nIsınma aşaması, madencilik yapmak için harika bir zamandır çünkü ödüller blok başına en yüksektir. Tari ağının ilk günlerinin sizin için ödüllendirici olmasını umuyoruz.\nOyunlar başlasın. Bloklar daima lehinize olsun!",
+    "subtitle": "Bu tam olarak ne anlama geliyor?",
+    "tag-line": "Tari Ana Ağına Hoş Geldiniz",
+    "title": "Isınma aşaması"
+  }
 }

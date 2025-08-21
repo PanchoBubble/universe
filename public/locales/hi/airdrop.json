@@ -1,0 +1,111 @@
+{
+  "airdropGame": "एयरड्रॉप गेम",
+  "bonus-gems-earned": "बोनस रत्न अर्जित किए",
+  "claimGems": "रत्नों का दावा करें",
+  "claimModalFieldLabel": "वैकल्पिक",
+  "claimModalFieldPlaceholder": "रेफरल कोड दर्ज करें",
+  "claimModalFinePrint": "<strong>कृपया ध्यान दें:</strong> रत्नों का दावा करने से विश्लेषण चालू हो जाता है ताकि हम Universe को बेहतर बना सकें",
+  "claimModalText": "टेस्टनेट के दौरान अपने एयरड्रॉप पुरस्कार को बढ़ाने के लिए माइनिंग और मित्रों को संदर्भित करके रत्न कमाएं! क्या आपके पास एक रेफरल कोड है? इसे नीचे दर्ज करें और अपने और अपने मित्र के लिए अतिरिक्त <strong>{{gems}}</strong> रत्न कमाएं!",
+  "claimModalTitle": "टेस्टनेट पर माइनिंग के लिए पुरस्कार कमाएं",
+  "claimReferralCode": "अपना रेफरल कोड <span>{{gems}}<image src=\"/assets/images/gem.png\" alt=\"\"/></span> रत्नों का दावा करें।",
+  "claimReferralGifts": "अपना रेफरल कोड का दावा करें और {{gems}} रत्न कमाएं। एक बार जब आप अपना खाता कनेक्ट कर लेते हैं, तो आपको आपके रत्न प्रदान किए जाएंगे।",
+  "copied": "कॉपी किया गया!",
+  "copyFailed": "कॉपी विफल",
+  "copying": "कॉपी कर रहे हैं...",
+  "doLater": "मैं इसे बाद में करूंगा",
+  "gems": "रत्न",
+  "giftReferralCode": "Tari Universe में आमंत्रित प्रत्येक मित्र के लिए {{gems}} रत्न कमाएं। एक बार जब वे अपना खाता कनेक्ट कर लेते हैं, तो आपको आपके रत्न प्रदान किए जाएंगे।",
+  "giftReferralCodeHeader": "अपना रेफरल कोड <span>{{gems}}<image src=\"/assets/images/gem.png\" alt=\"\"/></span> रत्नों का दावा करें।",
+  "invite": "आमंत्रित करें",
+  "invite-friends-gems": "हर दोस्त के लिए जो आपके आमंत्रण लिंक का उपयोग करता है, आपको 5,000 रत्न मिलते हैं।",
+  "inviteFriends": "मित्रों को आमंत्रित करें",
+  "inviteFriendsText": "लिंक कॉपी करें और साझा करें",
+  "invitedAmount": "आपने <span>{{count}}</span> मित्रों को आमंत्रित किया है",
+  "joinAirdrop": "एयरड्रॉप में शामिल हों",
+  "joinAirdropButtonAriaLabel": "एयरड्रॉप में शामिल हों और रत्न कमाएं। लिंक कॉपी करने के लिए राइट-क्लिक करें",
+  "keep-mining-to-earn-rewards": "अधिक पुरस्कार अर्जित करने के लिए माइनिंग जारी रखें!",
+  "linkCopied": "लिंक कॉपी किया गया!",
+  "live": "लाइव",
+  "logged-in-as": "<strong>@{{twitter}}</strong> के रूप में लॉग इन",
+  "loggedInTitle": "एयरड्रॉप पुरस्कार",
+  "loggedOutTitle": "रत्न कमाने के लिए दोस्तों को आमंत्रित करें",
+  "loginButton": "रत्नों का दावा करने के लिए लॉग इन करें",
+  "logout": "लॉगआउट",
+  "nextTierBonus": "<strong>{{count}} मित्रों</strong> को आमंत्रित करें और {{bonusGems}} बोनस रत्न कमाएं",
+  "permission": {
+    "setup": "तारी यूनिवर्स आपके अनुभव को <strong>सुधारने के लिए</strong> एनालिटिक्स का उपयोग करना चाहता है।",
+    "text": "तारी यूनिवर्स आपके अनुभव को बेहतर बनाने के लिए विश्लेषण का उपयोग करना चाहता है और दोस्तों को आमंत्रित करने के लिए आपको रत्नों से पुरस्कृत करना चाहता है।",
+    "title": "रत्न कमाएं और Tari Universe को बेहतर बनाएं"
+  },
+  "permissionNoGems": {
+    "text": "Tari Universe आपके अनुभव को बेहतर बनाने के लिए विश्लेषण का उपयोग करना चाहता है।",
+    "title": "Tari Universe को बेहतर बनाएं"
+  },
+  "push-notifications": {
+    "text": "Tari Universe आपके जुड़े उपकरणों पर आपको सूचनाएं भेजना चाहता है",
+    "title": "Tari Universe को सूचनाएं भेजने की अनुमति दें"
+  },
+  "referral": "एक मित्र को आमंत्रित करें",
+  "rightClickToCopy": "लिंक कॉपी करने के लिए राइट-क्लिक करें",
+  "success": "सफलता",
+  "topTooltipText": "रत्नों को इकट्ठा करके एक Tari Airdrop प्राप्त करें। जितने अधिक रत्न आप कमाते हैं, आपका airdrop उतना ही बड़ा होगा।",
+  "topTooltipTitle": "टेस्टनेट पुरस्कार",
+  "unclaimedGems": "अदावा किए गए रत्न",
+  "update-username": "उपयोगकर्ता नाम अपडेट करें",
+  "username-error": "उपयोगकर्ता नाम 3-20 अक्षरों का होना चाहिए और इसमें केवल अक्षर, संख्याएं, अंडरस्कोर या हाइफ़न हो सकते हैं",
+  "username-update-success": "उपयोगकर्ता नाम सफलतापूर्वक अपडेट किया गया",
+  "you-reached-your-giftinh-goal": "आपने अपना उपहार लक्ष्य प्राप्त कर लिया है!",
+  "your-friend-accepted-gift": "आपके दोस्तों में से एक ने आपका उपहार स्वीकार कर लिया है!",
+  "crewRewards": {
+    "title": "Rewards",
+    "myCrew": "My Crew",
+    "earnDescription": "Earn <strong>{{userReward}} XTM</strong> for every <strong>{{daysRequired}} days</strong> your friend mines. Your friend will also earn <strong>{{friendReward}} XTM</strong>.",
+    "inviteFriends": "Invite Friends",
+    "copied": "Copied!",
+    "activeMinersStat": "Active Miners",
+    "bonusXTMEarned": "Bonus XTM Earned",
+    "of": "of",
+    "inviteFriendsMessage": "Invite friends and start earning <strong>bonus XTM!</strong>",
+    "errorLoadingData": "Error loading crew data. Please try again.",
+    "filters": {
+      "all": "All",
+      "complete": "Complete",
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "crewStatus": {
+      "completed": "Completed",
+      "inProgress": "In Progress",
+      "needsNudge": "Needs Nudge"
+    },
+    "actions": {
+      "claimed": "Claimed",
+      "claim": "Claim {{amount}} XTM",
+      "nudge": "Nudge"
+    },
+    "streak": {
+      "unlockBonusRewards": "Unlock your bonus rewards",
+      "mineConsecutiveDays": "Mine for at least <strong>{{streakDaysRequired}} consecutive days</strong> each week to earn your bonus XTM.",
+      "keepStreak": "Keep your streak to keep earning rewards!",
+      "dayStreak": "{{days}} Day Streak",
+      "day": "Day",
+      "loadingStreak": "Loading streak...",
+      "startYourStreak": "Start Your Streak!",
+      "oneDayStreak": "1 Day Streak",
+      "multiDayStreak": "{{days}} Day Streak",
+      "startMiningMessage": "Start mining to begin your streak and earn rewards!",
+      "minimumRequirementsMet": "You've met the minimum requirements. Keep going!",
+      "daysToMinimum": "{{days}} more days to meet minimum requirements!"
+    },
+    "login": {
+      "title": "Mine with friends. <strong>Earn together.</strong>",
+      "description": "You earn <strong>{{userReward}} bonus XTM/week</strong> AND your friend earns <strong>{{friendReward}} bonus XTM/week</strong> when you and your friend both mine",
+      "bonusText": "Earn bonus rewards up to {{maxWeeks}} weeks per invite",
+      "loginButton": "Log in & Start Earning!"
+    },
+    "feedback": {
+      "nudgeSent": "Nudge sent!",
+      "rewardClaimed": "Reward claimed!"
+    }
+  }
+}

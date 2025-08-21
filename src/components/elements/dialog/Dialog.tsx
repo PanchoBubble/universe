@@ -11,29 +11,39 @@ import {
 } from 'react';
 import {
     FloatingFocusManager,
+    FloatingNode,
     FloatingPortal,
     useClick,
     useDismiss,
     useFloating,
+    useFloatingNodeId,
     useInteractions,
     useMergeRefs,
     useRole,
 } from '@floating-ui/react';
-import { ContentWrapper, Overlay } from '@app/components/elements/dialog/Dialog.styles.ts';
+import { type } from '@tauri-apps/plugin-os';
+import { useAppStateStore } from '@app/store/appStateStore.ts';
+import { ContentWrapper, ContentWrapperProps, Overlay } from './Dialog.styles.ts';
 
 interface DialogOptions {
     open: boolean;
-    onOpenChange: (open: boolean) => void;
+    onOpenChange?: (open: boolean) => void;
+    disableClose?: boolean;
 }
 
-export function useDialog({ open: controlledOpen, onOpenChange: setControlledOpen }: DialogOptions) {
+function useDialog({ open: controlledOpen, onOpenChange: setControlledOpen, disableClose = false }: DialogOptions) {
     const [labelId, setLabelId] = useState<string | undefined>();
     const [descriptionId, setDescriptionId] = useState<string | undefined>();
+    const nodeId = useFloatingNodeId();
+    const hasError = useAppStateStore((s) => !!s.error);
+
+    const dismissEnabled = !hasError && !disableClose;
 
     const open = controlledOpen;
     const setOpen = setControlledOpen;
 
     const data = useFloating({
+        nodeId,
         open,
         onOpenChange: setOpen,
     });
@@ -43,9 +53,19 @@ export function useDialog({ open: controlledOpen, onOpenChange: setControlledOpe
     const click = useClick(context, {
         enabled: controlledOpen == null,
     });
-    const dismiss = useDismiss(context, { outsidePressEvent: 'mousedown' });
+    const dismiss = useDismiss(context, {
+        outsidePressEvent: 'mousedown',
+        outsidePress: (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            return target.classList.contains('overlay');
+        },
+        enabled: dismissEnabled,
+        bubbles: {
+            escapeKey: false,
+            outsidePress: true,
+        },
+    });
     const role = useRole(context);
-
     const interactions = useInteractions([click, dismiss, role]);
 
     return useMemo(
@@ -57,9 +77,10 @@ export function useDialog({ open: controlledOpen, onOpenChange: setControlledOpe
             labelId,
             descriptionId,
             setLabelId,
+            nodeId,
             setDescriptionId,
         }),
-        [open, setOpen, interactions, data, labelId, descriptionId]
+        [open, setOpen, interactions, data, labelId, descriptionId, nodeId]
     );
 }
 
@@ -72,7 +93,7 @@ type ContextType =
 
 const DialogContext = createContext<ContextType>(null);
 
-export const useDialogContext = () => {
+const useDialogContext = () => {
     const context = useContext(DialogContext);
 
     if (context == null) {
@@ -92,29 +113,39 @@ export function Dialog({
     return <DialogContext.Provider value={dialog}>{children}</DialogContext.Provider>;
 }
 
-export const DialogContent = forwardRef<HTMLDivElement, HTMLProps<HTMLDivElement> & { $unPadded?: boolean }>(
+export const DialogContent = forwardRef<HTMLDivElement, HTMLProps<HTMLDivElement> & ContentWrapperProps>(
     function DialogContent(props, propRef) {
+        const osType = type();
+
+        const isNotLinux = osType !== 'linux';
         const context = useDialogContext();
         const ref = useMergeRefs([context.refs.setFloating, propRef]);
 
-        if (!context.open) return null;
+        const transparentBg = props.$transparentBg && isNotLinux;
 
         return (
-            <FloatingPortal id="portal-root">
-                <Overlay lockScroll>
-                    <FloatingFocusManager context={context.context}>
-                        <ContentWrapper
-                            ref={ref}
-                            aria-labelledby={context.labelId}
-                            aria-describedby={context.descriptionId}
-                            {...context.getFloatingProps(props)}
-                            $unPadded={props.$unPadded}
-                        >
-                            {props.children}
-                        </ContentWrapper>
-                    </FloatingFocusManager>
-                </Overlay>
-            </FloatingPortal>
+            <FloatingNode id={context.nodeId} key={context.nodeId}>
+                {context.open ? (
+                    <FloatingPortal>
+                        <Overlay lockScroll className="overlay" $zIndex={props.$zIndex}>
+                            <FloatingFocusManager context={context.context} modal={false}>
+                                <ContentWrapper
+                                    ref={ref}
+                                    {...context.getFloatingProps(props)}
+                                    aria-labelledby={context.labelId}
+                                    aria-describedby={context.descriptionId}
+                                    $unPadded={props.$unPadded}
+                                    $disableOverflow={props.$disableOverflow}
+                                    $borderRadius={props.$borderRadius}
+                                    $transparentBg={transparentBg}
+                                >
+                                    {props.children}
+                                </ContentWrapper>
+                            </FloatingFocusManager>
+                        </Overlay>
+                    </FloatingPortal>
+                ) : null}
+            </FloatingNode>
         );
     }
 );

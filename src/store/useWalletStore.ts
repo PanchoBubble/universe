@@ -1,48 +1,147 @@
-import { create } from './create';
-import { WalletBalance } from '../types/app-status.ts';
-import { invoke } from '@tauri-apps/api';
+import { create } from 'zustand';
+import { TransactionInfo, WalletBalance } from '../types/app-status.ts';
+import { refreshTransactions } from './actions/walletStoreActions.ts';
+import { TxHistoryFilter } from '@app/components/transactions/history/FilterSelect.tsx';
+import { UserTransactionDTO } from '@tari-project/wxtm-bridge-backend-api';
+import { TariAddressType } from '@app/types/events-payloads.ts';
+import { useExchangeStore } from './useExchangeStore.ts';
 
-interface State extends WalletBalance {
+export interface BackendBridgeTransaction extends UserTransactionDTO {
+    sourceAddress?: string;
+    mined_in_block_height?: number;
+}
+// combined type for transactions
+export interface CombinedBridgeWalletTransaction {
+    sourceAddress?: string;
+    destinationAddress: string;
+    paymentId: string;
+    feeAmount: number;
+    createdAt: number;
+    tokenAmount: number;
+    mined_in_block_height?: number;
+    walletTransactionDetails: {
+        txId: number;
+        direction: number;
+        isCancelled: boolean;
+        status: number;
+        excessSig?: string;
+        message?: string;
+        paymentReference?: string;
+        destAddressEmoji?: string;
+    };
+    bridgeTransactionDetails?: {
+        status: UserTransactionDTO.status;
+        transactionHash?: string;
+        amountAfterFee: string;
+    };
+}
+
+export interface WalletStoreState {
     tari_address_base58: string;
     tari_address_emoji: string;
-    balance: number;
+    tari_address_type: TariAddressType;
+    exchange_wxtm_addresses: Record<string, string>;
+    balance?: WalletBalance;
+    calculated_balance?: number;
+    coinbase_transactions: TransactionInfo[];
+    tx_history_filter: TxHistoryFilter;
+    tx_history: TransactionInfo[];
+    // TODO: decide later for the best place to store this data
+    bridge_transactions: BackendBridgeTransaction[];
+    cold_wallet_address?: string;
+    is_wallet_importing: boolean;
+    is_swapping?: boolean;
+    detailsItem?: CombinedBridgeWalletTransaction | null;
+    wallet_scanning: {
+        is_scanning: boolean;
+        scanned_height: number;
+        total_height: number;
+        progress: number;
+    };
+    is_pin_locked: boolean;
+    is_seed_backed_up: boolean;
 }
 
-interface Actions {
-    fetchWalletDetails: () => Promise<void>;
+export interface WalletStoreSelectors {
+    getETHAddressOfCurrentExchange: () => string | undefined;
 }
 
-type WalletStoreState = State & Actions;
-
-const initialState: State = {
+export const initialState: WalletStoreState = {
     tari_address_base58: '',
     tari_address_emoji: '',
-    balance: 0,
-    available_balance: 0,
-    timelocked_balance: 0,
-    pending_incoming_balance: 0,
-    pending_outgoing_balance: 0,
+    tari_address_type: TariAddressType.Internal,
+    coinbase_transactions: [],
+    exchange_wxtm_addresses: {},
+    tx_history_filter: 'all-activity',
+    tx_history: [],
+    bridge_transactions: [],
+    cold_wallet_address: undefined,
+    is_wallet_importing: false,
+    wallet_scanning: {
+        is_scanning: true,
+        scanned_height: 0,
+        total_height: 0,
+        progress: 0,
+    },
+    is_pin_locked: false,
+    is_seed_backed_up: false,
 };
-export const useWalletStore = create<WalletStoreState>()((set) => ({
+
+// Configuration for memory management
+const MAX_TRANSACTIONS_IN_MEMORY = 1000; // Keep only the latest 1000 transactions
+const MAX_COINBASE_TRANSACTIONS_IN_MEMORY = 500; // Keep only the latest 500 coinbase transactions
+// const MAX_PENDING_TRANSACTIONS = 100; // Keep only the latest 100 pending transactions
+
+export const useWalletStore = create<WalletStoreState & WalletStoreSelectors>()((_, get) => ({
     ...initialState,
-    fetchWalletDetails: async () => {
-        try {
-            const tari_wallet_details = await invoke('get_tari_wallet_details');
-            const {
-                available_balance = 0,
-                timelocked_balance = 0,
-                pending_incoming_balance = 0,
-            } = tari_wallet_details.wallet_balance || {};
-            // Q: Should we substract pending_outgoing_balance here?
-            const newBalance = available_balance + timelocked_balance + pending_incoming_balance; //TM
-            set({
-                ...tari_wallet_details.wallet_balance,
-                tari_address_base58: tari_wallet_details.tari_address_base58,
-                tari_address_emoji: tari_wallet_details.tari_address_emoji,
-                balance: newBalance,
-            });
-        } catch (error) {
-            console.error('Could not get tari wallet details: ', error);
-        }
+    getETHAddressOfCurrentExchange: () => {
+        const exchangeId = useExchangeStore.getState().currentExchangeMinerId;
+        return get().exchange_wxtm_addresses[exchangeId] || undefined;
     },
 }));
+
+// Helper function to prune large arrays
+const pruneTransactionArray = <T extends { timestamp?: number; tx_id?: number }>(array: T[], maxSize: number): T[] => {
+    if (array.length <= maxSize) return array;
+
+    // Sort by timestamp (newest first) or tx_id as fallback, then take the latest
+    return array
+        .sort((a, b) => {
+            const aTime = a.timestamp || a.tx_id || 0;
+            const bTime = b.timestamp || b.tx_id || 0;
+            return bTime - aTime;
+        })
+        .slice(0, maxSize);
+};
+
+export const updateWalletScanningProgress = (payload: {
+    scanned_height: number;
+    total_height: number;
+    progress: number;
+}) => {
+    const is_scanning = payload.scanned_height < payload.total_height;
+    useWalletStore.setState((c) => ({
+        ...c,
+        wallet_scanning: {
+            is_scanning,
+            ...payload,
+        },
+    }));
+    if (!is_scanning) {
+        refreshTransactions();
+    }
+};
+
+// New function to prune transaction arrays when they get too large
+export const pruneTransactionHistory = () => {
+    useWalletStore.setState((state) => ({
+        transactions: pruneTransactionArray(state.tx_history, MAX_TRANSACTIONS_IN_MEMORY),
+        coinbase_transactions: pruneTransactionArray(state.coinbase_transactions, MAX_COINBASE_TRANSACTIONS_IN_MEMORY),
+    }));
+};
+
+// Function to clear old transaction data (can be called periodically or on certain events)
+const _clearOldTransactionData = () => {
+    console.info('Clearing old transaction data to free memory');
+    pruneTransactionHistory();
+};

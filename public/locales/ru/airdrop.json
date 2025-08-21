@@ -1,0 +1,111 @@
+{
+  "airdropGame": "Игра Airdrop",
+  "bonus-gems-earned": "Получены бонусные гемы",
+  "claimGems": "Получить гемы",
+  "claimModalFieldLabel": "Необязательно",
+  "claimModalFieldPlaceholder": "Введите реферальный код",
+  "claimModalFinePrint": "<strong>Обратите внимание:</strong> получение гемов включает аналитику, чтобы мы могли улучшить Universe",
+  "claimModalText": "Зарабатывайте гемы, майня и приглашая друзей, чтобы увеличить свою награду за airdrop в тестовой сети! У Вас есть реферальный код? Введите его ниже и получите дополнительные <strong>{{gems}}</strong> гемов для Вас и Вашего друга!",
+  "claimModalTitle": "Зарабатывайте награды за майнинг в тестовой сети",
+  "claimReferralCode": "Получите Ваш реферальный код <span>{{gems}}<image src=\"/assets/images/gem.png\" alt=\"\"/></span> гемов.",
+  "claimReferralGifts": "Получите Ваш реферальный код и заработайте {{gems}} гемов. Как только Вы подключите свой аккаунт, Вы получите свои гемы.",
+  "copied": "Скопировано!",
+  "copyFailed": "Ошибка копирования",
+  "copying": "Копирование...",
+  "doLater": "Я сделаю это позже",
+  "gems": "Гемы",
+  "giftReferralCode": "Заработайте {{gems}} гемов за каждого друга, которого Вы пригласите в Tari Universe. Как только они подключат свой аккаунт, Вы получите свои гемы.",
+  "giftReferralCodeHeader": "Получите Ваш реферальный код <span>{{gems}}<image src=\"/assets/images/gem.png\" alt=\"\"/></span> гемов.",
+  "invite": "Пригласить",
+  "invite-friends-gems": "За каждого друга, который использует вашу ссылку-приглашение, вы получаете 5,000 драгоценных камней.",
+  "inviteFriends": "Пригласить друзей",
+  "inviteFriendsText": "Скопируйте ссылку и поделитесь ею",
+  "invitedAmount": "Вы пригласили <span>{{count}}</span> друзей",
+  "joinAirdrop": "Присоединиться к Airdrop",
+  "joinAirdropButtonAriaLabel": "Присоединяйтесь к Airdrop и зарабатывайте гемы. Щелкните правой кнопкой мыши, чтобы скопировать ссылку",
+  "keep-mining-to-earn-rewards": "Продолжайте майнить, чтобы заработать больше наград!",
+  "linkCopied": "Ссылка скопирована!",
+  "live": "в реальном времени",
+  "logged-in-as": "Вход выполнен как <strong>@{{twitter}}</strong>",
+  "loggedInTitle": "Награды Airdrop",
+  "loggedOutTitle": "Пригласите друзей, чтобы заработать драгоценные камни",
+  "loginButton": "Войдите, чтобы получить гемы",
+  "logout": "Выйти",
+  "nextTierBonus": "Пригласите <strong>{{count}} друзей</strong> и получите {{bonusGems}} бонусных гемов",
+  "permission": {
+    "setup": "Tari Universe хотел бы использовать аналитику для <strong>улучшения Вашего опыта.</strong>",
+    "text": "Tari Universe хотел бы использовать аналитику, чтобы улучшить ваш опыт и вознаградить вас драгоценными камнями за приглашение друзей.",
+    "title": "Зарабатывайте гемы и улучшайте Tari Universe"
+  },
+  "permissionNoGems": {
+    "text": "Tari Universe хочет использовать аналитику для улучшения Вашего опыта.",
+    "title": "Сделайте Tari Universe лучше"
+  },
+  "push-notifications": {
+    "text": "Tari Universe хотел бы иметь возможность отправлять Вам уведомления на Ваши подключенные устройства",
+    "title": "Разрешите Tari Universe отправлять уведомления  "
+  },
+  "referral": "Пригласить друга",
+  "rightClickToCopy": "Щелкните правой кнопкой мыши, чтобы скопировать ссылку",
+  "success": "Успех",
+  "topTooltipText": "Получите Tari Airdrop, собирая драгоценные камни. Чем больше камней Вы заработаете, тем больше будет Ваш airdrop.",
+  "topTooltipTitle": "Награды тестовой сети",
+  "unclaimedGems": "Неполученные гемы",
+  "update-username": "Обновить имя пользователя",
+  "username-error": "Имя пользователя должно содержать от 3 до 20 символов и включать только буквы, цифры, подчеркивания или дефисы",
+  "username-update-success": "Имя пользователя успешно обновлено",
+  "you-reached-your-giftinh-goal": "Вы достигли своей цели по подаркам!",
+  "your-friend-accepted-gift": "Один из Ваших друзей принял Ваш подарок!",
+  "crewRewards": {
+    "title": "Rewards",
+    "myCrew": "My Crew",
+    "earnDescription": "Earn <strong>{{userReward}} XTM</strong> for every <strong>{{daysRequired}} days</strong> your friend mines. Your friend will also earn <strong>{{friendReward}} XTM</strong>.",
+    "inviteFriends": "Invite Friends",
+    "copied": "Copied!",
+    "activeMinersStat": "Active Miners",
+    "bonusXTMEarned": "Bonus XTM Earned",
+    "of": "of",
+    "inviteFriendsMessage": "Invite friends and start earning <strong>bonus XTM!</strong>",
+    "errorLoadingData": "Error loading crew data. Please try again.",
+    "filters": {
+      "all": "All",
+      "complete": "Complete",
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "crewStatus": {
+      "completed": "Completed",
+      "inProgress": "In Progress",
+      "needsNudge": "Needs Nudge"
+    },
+    "actions": {
+      "claimed": "Claimed",
+      "claim": "Claim {{amount}} XTM",
+      "nudge": "Nudge"
+    },
+    "streak": {
+      "unlockBonusRewards": "Unlock your bonus rewards",
+      "mineConsecutiveDays": "Mine for at least <strong>{{streakDaysRequired}} consecutive days</strong> each week to earn your bonus XTM.",
+      "keepStreak": "Keep your streak to keep earning rewards!",
+      "dayStreak": "{{days}} Day Streak",
+      "day": "Day",
+      "loadingStreak": "Loading streak...",
+      "startYourStreak": "Start Your Streak!",
+      "oneDayStreak": "1 Day Streak",
+      "multiDayStreak": "{{days}} Day Streak",
+      "startMiningMessage": "Start mining to begin your streak and earn rewards!",
+      "minimumRequirementsMet": "You've met the minimum requirements. Keep going!",
+      "daysToMinimum": "{{days}} more days to meet minimum requirements!"
+    },
+    "login": {
+      "title": "Mine with friends. <strong>Earn together.</strong>",
+      "description": "You earn <strong>{{userReward}} bonus XTM/week</strong> AND your friend earns <strong>{{friendReward}} bonus XTM/week</strong> when you and your friend both mine",
+      "bonusText": "Earn bonus rewards up to {{maxWeeks}} weeks per invite",
+      "loginButton": "Log in & Start Earning!"
+    },
+    "feedback": {
+      "nudgeSent": "Nudge sent!",
+      "rewardClaimed": "Reward claimed!"
+    }
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "airdropGame": "Testnet Belohnungen",
+  "bonus-gems-earned": "Bonus-Edelsteine verdient",
+  "claimGems": "Edelsteine beanspruchen",
+  "claimModalFieldLabel": "Optional",
+  "claimModalFieldPlaceholder": "Gib den Einladungscode ein",
+  "claimModalFinePrint": "<strong>Bitte beachten:</strong> Edelsteine beanspruchen aktiviert Analysen, damit wir das Universum verbessern können.",
+  "claimModalText": "Verdiene Edelsteine durch Mining und das Einladen von Freunden. Je mehr Edelsteine du verdienst, desto größer ist dein Tari Airdrop. Hast du einen Empfehlungs-Code? Gib ihn unten ein und verdopple deinen Bonus von <strong>{{gems1}} Edelsteinen</strong> auf <strong>{{gems2}} Edelsteine!</strong>",
+  "claimModalTitle": "BELONUNGEN FÜR DAS MINING IM TESTNET VERDIENEN",
+  "claimReferralCode": "Beanspruche deinen Empfehlungs-Code <span>{{gems}}<image src='/assets/images/gem.png' alt=''/></span> Edelsteine.",
+  "claimReferralGifts": "Beanspruche deinen Empfehlungs-Code und erhalte {{gems}} Edelsteine. Sobald du dein Konto verbindest, wirst du deine Edelsteine erhalten.",
+  "copied": "Kopiert!",
+  "copyFailed": "Kopieren fehlgeschlagen",
+  "copying": "Kopieren...",
+  "doLater": "Ich mache das später",
+  "gems": "Edelsteine",
+  "giftReferralCode": "Verdiene {{gems}} Edelsteine für jeden Freund, den du in Tari Universe einlädst. Sobald sie ihr Konto verbinden, wirst du deine Edelsteine erhalten.",
+  "giftReferralCodeHeader": "Beanspruche deinen Empfehlungs-Code <span>{{gems}}<image src='/assets/images/gem.png' alt=''/></span> Edelsteine.",
+  "invite": "Einladen",
+  "invite-friends-gems": "Für jeden Freund, der Ihren Einladungslink nutzt, erhalten Sie 5.000 Edelsteine.",
+  "inviteFriends": "Freunde einladen",
+  "inviteFriendsText": "Link kopieren und teilen",
+  "invitedAmount": "Du hast <span>{{count}}</span> Freunde eingeladen",
+  "joinAirdrop": "Am Airdrop teilnehmen",
+  "joinAirdropButtonAriaLabel": "Airdrop beitreten und Edelsteine verdienen. Rechtsklick, um den Link zu kopieren",
+  "keep-mining-to-earn-rewards": "Weiter minen, um mehr Belohnungen zu verdienen!",
+  "linkCopied": "Link kopiert!",
+  "live": "live",
+  "logged-in-as": "Eingeloggt als <strong>@{{twitter}}</strong>",
+  "loggedInTitle": "Airdrop-Belohnungen",
+  "loggedOutTitle": "Freunde einladen, um Edelsteine zu verdienen",
+  "loginButton": "Einloggen, um Edelsteine zu beanspruchen",
+  "logout": "Ausloggen",
+  "nextTierBonus": "Lade <strong>{{count}} Freunde</strong> ein und erhalte {{bonusGems}} Bonus-Edelsteine",
+  "permission": {
+    "setup": "Tari Universe möchte Analysen verwenden, um <strong>Ihr Erlebnis zu verbessern.</strong>",
+    "text": "Tari Universe möchte Analysen verwenden, um Ihre Erfahrung zu verbessern und Sie mit Edelsteinen für das Einladen von Freunden zu belohnen.",
+    "title": "Verdiene Edelsteine und mache Tari Universe besser"
+  },
+  "permissionNoGems": {
+    "text": "Tari Universe möchte Analysen verwenden, um deine Erfahrung zu verbessern.",
+    "title": "Mache Tari Universe besser"
+  },
+  "push-notifications": {
+    "text": "Tari Universe möchte Ihnen Benachrichtigungen an Ihre verbundenen Geräte senden können",
+    "title": "Erlauben Sie Tari Universe, Benachrichtigungen zu senden"
+  },
+  "referral": "Freund einladen",
+  "rightClickToCopy": "Rechtsklick, um den Link zu kopieren",
+  "success": "Erfolg",
+  "topTooltipText": "Erhalte einen Tari Airdrop, indem du Edelsteine sammelst. Je mehr Edelsteine du verdienst, desto größer ist dein Airdrop.",
+  "topTooltipTitle": "Testnet Belohnungen",
+  "unclaimedGems": "Nicht beanspruchte Edelsteine",
+  "update-username": "Benutzernamen aktualisieren",
+  "username-error": "Der Benutzername muss 3-20 Zeichen lang sein und darf nur Buchstaben, Zahlen, Unterstriche oder Bindestriche enthalten",
+  "username-update-success": "Benutzername erfolgreich aktualisiert",
+  "you-reached-your-giftinh-goal": "Sie haben Ihr Geschenkziel erreicht!",
+  "your-friend-accepted-gift": "Einer Ihrer Freunde hat Ihr Geschenk angenommen!",
+  "crewRewards": {
+    "title": "Rewards",
+    "myCrew": "My Crew",
+    "earnDescription": "Earn <strong>{{userReward}} XTM</strong> for every <strong>{{daysRequired}} days</strong> your friend mines. Your friend will also earn <strong>{{friendReward}} XTM</strong>.",
+    "inviteFriends": "Invite Friends",
+    "copied": "Copied!",
+    "activeMinersStat": "Active Miners",
+    "bonusXTMEarned": "Bonus XTM Earned",
+    "of": "of",
+    "inviteFriendsMessage": "Invite friends and start earning <strong>bonus XTM!</strong>",
+    "errorLoadingData": "Error loading crew data. Please try again.",
+    "filters": {
+      "all": "All",
+      "complete": "Complete",
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "crewStatus": {
+      "completed": "Completed",
+      "inProgress": "In Progress",
+      "needsNudge": "Needs Nudge"
+    },
+    "actions": {
+      "claimed": "Claimed",
+      "claim": "Claim {{amount}} XTM",
+      "nudge": "Nudge"
+    },
+    "streak": {
+      "unlockBonusRewards": "Unlock your bonus rewards",
+      "mineConsecutiveDays": "Mine for at least <strong>{{streakDaysRequired}} consecutive days</strong> each week to earn your bonus XTM.",
+      "keepStreak": "Keep your streak to keep earning rewards!",
+      "dayStreak": "{{days}} Day Streak",
+      "day": "Day",
+      "loadingStreak": "Loading streak...",
+      "startYourStreak": "Start Your Streak!",
+      "oneDayStreak": "1 Day Streak",
+      "multiDayStreak": "{{days}} Day Streak",
+      "startMiningMessage": "Start mining to begin your streak and earn rewards!",
+      "minimumRequirementsMet": "You've met the minimum requirements. Keep going!",
+      "daysToMinimum": "{{days}} more days to meet minimum requirements!"
+    },
+    "login": {
+      "title": "Mine with friends. <strong>Earn together.</strong>",
+      "description": "You earn <strong>{{userReward}} bonus XTM/week</strong> AND your friend earns <strong>{{friendReward}} bonus XTM/week</strong> when you and your friend both mine",
+      "bonusText": "Earn bonus rewards up to {{maxWeeks}} weeks per invite",
+      "loginButton": "Log in & Start Earning!"
+    },
+    "feedback": {
+      "nudgeSent": "Nudge sent!",
+      "rewardClaimed": "Reward claimed!"
+    }
+  }
+}

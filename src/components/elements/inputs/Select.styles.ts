@@ -1,27 +1,64 @@
 import styled, { css } from 'styled-components';
 
+export type SelectVariant = 'primary' | 'bordered' | 'minimal';
+
+interface StyleProps {
+    $variant?: SelectVariant;
+    $disabled?: boolean;
+    $isBordered?: boolean;
+    $forceHeight?: number;
+    $open?: boolean;
+    $selected?: boolean;
+    $loading?: boolean;
+    $isSync?: boolean;
+}
+
 export const Wrapper = styled.div`
     display: flex;
     flex-direction: column;
+
     position: relative;
     width: 100%;
 `;
 
-export const TriggerWrapper = styled.div<{ $disabled?: boolean; $isBordered?: boolean }>`
+export const TriggerWrapper = styled.div<StyleProps>`
     width: 100%;
-    background: ${({ theme }) => theme.palette.background.paper};
     display: flex;
     align-items: center;
     justify-content: space-between;
     cursor: pointer;
-    ${({ $isBordered }) =>
+    border-radius: 10px;
+
+    img {
+        width: 12px;
+        display: flex;
+    }
+
+    &:focus-visible {
+        outline: 2px solid ${({ theme }) => theme.palette.focusOutline};
+        outline-offset: 2px;
+    }
+
+    ${({ $isBordered, theme }) =>
         $isBordered &&
         css`
-            border-radius: 10px;
-            border: 1px solid rgba(0, 0, 0, 0.1);
+            border: 1px solid ${theme.palette.divider};
             background: rgba(0, 0, 0, 0.01);
             padding: 0 15px;
+
+            &:focus-visible {
+                outline: 2px solid ${({ theme }) => theme.palette.focusOutline};
+                outline-offset: 2px;
+            }
         `}
+
+    ${({ $isSync }) =>
+        $isSync &&
+        css`
+            padding: 10px 15px;
+        `}
+
+    ${({ $variant }) => $variant === 'primary' && css``}
     ${({ $disabled }) =>
         $disabled &&
         css`
@@ -30,74 +67,98 @@ export const TriggerWrapper = styled.div<{ $disabled?: boolean; $isBordered?: bo
         `}
 `;
 
-export const Options = styled.div<{ $open?: boolean; $isBordered?: boolean }>`
+export const OptionsPosition = styled.div`
+    position: absolute;
+    width: 100%;
+    z-index: 10;
+`;
+
+export const Options = styled.div<StyleProps>`
     display: flex;
     flex-direction: column;
-    box-shadow: 0 0 45px 0 rgba(0, 0, 0, 0.15);
-    background: ${({ theme }) => theme.palette.background.paper};
+    box-shadow: 0 20px 40px 0 rgba(0, 0, 0, 0.3);
+    background: ${({ theme }) => theme.palette.background.tooltip};
     border-radius: ${({ theme }) => theme.shape.borderRadius.app};
     height: auto;
     transition: all 0.1s ease-in;
-    position: absolute;
-    left: ${({ $isBordered }) => ($isBordered ? '0' : '-12px')};
     min-width: 220px;
     width: ${({ $isBordered }) => ($isBordered ? '100%' : 'max-content')};
-    padding: 9px 12px;
+    padding: 9px 8px;
 
     align-items: flex-start;
-    gap: 6px;
+    gap: 1px;
 
     color: ${({ theme }) => theme.palette.text.primary};
     font-weight: 500;
     letter-spacing: -1px;
     z-index: 10;
+    max-height: 200px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
 `;
 
-export const SelectedOption = styled.div<{ $isBordered?: boolean }>`
+export const SelectedOption = styled.div<StyleProps>`
     color: ${({ theme }) => theme.palette.text.primary};
+
     display: flex;
     align-items: center;
     gap: 5px;
 
-    font-size: ${({ $isBordered }) => ($isBordered ? '14px' : '18px')};
+    font-size: ${({ $isBordered }) => ($isBordered ? '14px' : '14px')};
     font-weight: 500;
-    height: 36px;
+
     width: 100%;
-    img {
-        width: 14px;
-        display: flex;
-    }
+    letter-spacing: -0.2px;
+
+    ${({ $forceHeight }) =>
+        $forceHeight &&
+        css`
+            height: ${$forceHeight}px;
+        `}
 `;
 
 export const OptionLabelWrapper = styled.div`
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 9px;
+    gap: 6px;
     img {
         width: 18px;
         display: flex;
     }
 `;
-export const StyledOption = styled.div<{ $selected?: boolean }>`
+
+export const StyledOption = styled.div<StyleProps>`
     display: flex;
     font-size: 14px;
     background: ${({ theme }) => theme.palette.background.paper};
     line-height: 1;
-    cursor: pointer;
+    cursor: ${({ $loading }) => ($loading ? 'wait' : 'pointer')};
     border-radius: 10px;
-    transition: all 0.2s ease-in-out;
 
-    height: 36px;
-    padding: 13px 7px;
+    height: 38px;
+    padding: 0 12px;
+
     justify-content: space-between;
     align-items: center;
     align-self: stretch;
-    background: ${({ theme, $selected }) => ($selected ? theme.palette.colors.darkAlpha[5] : 'none')};
+    background: ${({ theme, $selected }) => ($selected ? theme.palette.action.background.default : 'none')};
 
     &:hover {
-        background: ${({ theme }) => theme.palette.colors.darkAlpha[10]};
+        background: ${({ theme }) => theme.palette.action.hover.default};
     }
+
+    &:focus-visible {
+        outline: 2px solid ${({ theme }) => theme.palette.focusOutline};
+        outline-offset: -2px;
+    }
+
+    ${({ $isBordered }) =>
+        $isBordered &&
+        css`
+            height: 36px;
+            padding: 13px 7px;
+        `}
 `;
 
 export const IconWrapper = styled.div`
@@ -107,7 +168,6 @@ export const IconWrapper = styled.div`
     align-items: center;
     justify-content: center;
     border-radius: 100%;
-    background: ${({ theme }) => theme.palette.background.paper};
     color: ${({ theme }) => theme.palette.text.primary};
 
     svg {
