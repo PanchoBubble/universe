@@ -23,6 +23,7 @@
 use crate::binaries::{Binaries, BinaryResolver};
 use crate::process_adapter::{HandleUnhealthyResult, ProcessInstanceTrait};
 use crate::process_adapter::{HealthStatus, ProcessAdapter, StatusMonitor};
+use crate::{LOG_TARGET_APP_LOGIC, LOG_TARGET_STATUSES};
 use futures_util::future::FusedFuture;
 use log::{error, info, warn};
 use std::path::{Path, PathBuf};
@@ -38,8 +39,6 @@ use tokio::time::sleep;
 use tokio::time::{Instant, MissedTickBehavior};
 use tokio_util::task::TaskTracker;
 
-const LOG_TARGET: &str = "tari::universe::process_watcher";
-
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ProcessWatcherStats {
     pub current_uptime: Duration,
@@ -52,7 +51,7 @@ pub(crate) struct ProcessWatcherStats {
 }
 
 pub struct ProcessWatcher<TAdapter: ProcessAdapter> {
-    pub(crate) adapter: TAdapter,
+    pub adapter: TAdapter,
     watcher_task: Option<JoinHandle<Result<i32, anyhow::Error>>>,
     internal_shutdown: Shutdown,
     pub poll_time: tokio::time::Duration,
@@ -109,13 +108,11 @@ impl<TAdapter: ProcessAdapter> ProcessWatcher<TAdapter> {
 
         let name = self.adapter.name().to_string();
         if self.watcher_task.is_some() {
-            warn!(target: LOG_TARGET, "Tried to start process watcher for {name} twice");
+            warn!(target: LOG_TARGET_APP_LOGIC, "Tried to start process watcher for {name} twice");
             self.stop().await?;
         }
-        info!(target: LOG_TARGET, "Starting process watcher for {name}");
-        let binary_path = BinaryResolver::current()
-            .resolve_path_to_binary_files(binary)
-            .await?;
+        info!(target: LOG_TARGET_APP_LOGIC, "Starting process watcher for {name}");
+        let binary_path = BinaryResolver::current().get_binary_path(binary).await?;
         self.kill_previous_instances(base_path.clone(), &binary_path)
             .await?;
 
@@ -125,7 +122,7 @@ impl<TAdapter: ProcessAdapter> ProcessWatcher<TAdapter> {
         let poll_time = self.poll_time;
         let health_timeout = self.health_timeout;
 
-        info!(target: LOG_TARGET, "Using {binary_path:?} for {name}");
+        info!(target: LOG_TARGET_APP_LOGIC, "Using {binary_path:?} for {name}");
         let first_start = self
             .is_first_start
             .load(std::sync::atomic::Ordering::SeqCst);
@@ -157,7 +154,7 @@ impl<TAdapter: ProcessAdapter> ProcessWatcher<TAdapter> {
                 total_health_check_duration: Duration::from_secs(0),
             };
             // sleep(Duration::from_secs(10)).await;
-            info!(target: LOG_TARGET, "Starting process watcher for {name}");
+            info!(target: LOG_TARGET_APP_LOGIC, "Starting process watcher for {name}");
             let mut watch_timer = tokio::time::interval(poll_time);
             watch_timer.set_missed_tick_behavior(MissedTickBehavior::Delay);
             let mut warning_count = 0;
@@ -166,6 +163,13 @@ impl<TAdapter: ProcessAdapter> ProcessWatcher<TAdapter> {
             loop {
                 let unhealthy_timer = Instant::now();
                 select! {
+                      _ = inner_shutdown.wait() => {
+                          return child.stop().await;
+
+                      },
+                      _ = global_shutdown_signal.wait() => {
+                          return child.stop().await;
+                      }
                       _ = watch_timer.tick() => {
                         let status_monitor3 = status_monitor2.clone();
 
@@ -188,17 +192,9 @@ impl<TAdapter: ProcessAdapter> ProcessWatcher<TAdapter> {
                             return Ok(exit_code);
                         }
                     },
-                    _ = inner_shutdown.wait() => {
-                        return child.stop().await;
 
-                    },
-                    _ = global_shutdown_signal.wait() => {
-                        return child.stop().await;
-                    }
                 }
-                if let Err(_unused) = stats_broadcast.send(stats.clone()) {
-                    warn!(target: LOG_TARGET, "Failed to broadcast process watcher stats for {name}");
-                }
+                stats_broadcast.send_replace(stats.clone());
             }
         }));
         Ok(())
@@ -229,7 +225,7 @@ impl<TAdapter: ProcessAdapter> ProcessWatcher<TAdapter> {
     }
 
     pub async fn stop(&mut self) -> Result<i32, anyhow::Error> {
-        info!(target: LOG_TARGET, "Stopping process watcher for {}", self.adapter.name());
+        info!(target: LOG_TARGET_APP_LOGIC, "Stopping process watcher for {}", self.adapter.name());
         self.internal_shutdown.trigger();
         if let Some(task) = self.watcher_task.take() {
             let exit_code = task.await??;
@@ -285,14 +281,14 @@ async fn do_health_check<TStatusMonitor: StatusMonitor, TProcessInstance: Proces
                 stats.num_warnings += 1;
                 *warning_count += 1;
                 if *warning_count > 10 {
-                    error!(target: LOG_TARGET, "{name} is not healthy. Health check returned warning");
+                    error!(target: LOG_TARGET_STATUSES, "{name} is not healthy. Health check returned warning");
                     *warning_count = 0;
                 } else {
                     is_healthy = true;
                 }
             }
             HealthStatus::Unhealthy => {
-                warn!(target: LOG_TARGET, "{name} is not healthy. Health check returned false");
+                warn!(target: LOG_TARGET_STATUSES, "{name} is not healthy. Health check returned false");
             }
         }
     } else {
@@ -312,7 +308,7 @@ async fn do_health_check<TStatusMonitor: StatusMonitor, TProcessInstance: Proces
     {
         stats.num_failures += 1;
         if uptime.elapsed() < expected_startup_time && !ping_failed {
-            warn!(target: LOG_TARGET, "{name} is not healthy. Waiting for startup time to elapse");
+            warn!(target: LOG_TARGET_STATUSES, "{name} is not healthy. Waiting for startup time to elapse");
         } else {
             match child.stop().await {
                 Ok(exit_code) => {
@@ -320,38 +316,37 @@ async fn do_health_check<TStatusMonitor: StatusMonitor, TProcessInstance: Proces
                         if stop_on_exit_codes.contains(&exit_code) {
                             return Ok(Some(exit_code));
                         }
-                        warn!(target: LOG_TARGET, "{name} exited with error code: {exit_code}, restarting because it is not a listed exit code to list for");
+                        warn!(target: LOG_TARGET_STATUSES, "{name} exited with error code: {exit_code}, restarting because it is not a listed exit code to list for");
 
                         // return Ok(exit_code);
                     } else {
-                        info!(target: LOG_TARGET, "{name} exited successfully");
+                        info!(target: LOG_TARGET_STATUSES, "{name} exited successfully");
                     }
                 }
                 Err(e) => {
-                    error!(target: LOG_TARGET, "{name} exited with error: {e}");
+                    error!(target: LOG_TARGET_STATUSES, "{name} exited with error: {e}");
                     //   return Err(e);
                 }
             }
 
             // Restart dead app
             sleep(Duration::from_secs(1)).await;
-            warn!(target: LOG_TARGET, "Restarting {name} after health check failure");
+            warn!(target: LOG_TARGET_STATUSES, "Restarting {name} after health check failure");
             *uptime = Instant::now();
             stats.num_restarts += 1;
-            stats.current_uptime = uptime.elapsed();
             match status_monitor3
                 .handle_unhealthy(*duration_since_last_healthy_status)
                 .await
             {
                 Ok(HandleUnhealthyResult::Continue) => {
-                    info!(target: LOG_TARGET, "Continuing after unhealthy state for {name}");
+                    info!(target: LOG_TARGET_STATUSES, "Continuing after unhealthy state for {name}");
                 }
                 Ok(HandleUnhealthyResult::Stop) => {
-                    info!(target: LOG_TARGET, "Stopping watcher after unhealthy state for {name}");
+                    info!(target: LOG_TARGET_STATUSES, "Stopping watcher after unhealthy state for {name}");
                     return Ok(Some(1));
                 }
                 Err(e) => {
-                    error!(target: LOG_TARGET, "Error handling unhealthy state for {name}: {e}");
+                    error!(target: LOG_TARGET_STATUSES, "Error handling unhealthy state for {name}: {e}");
                 }
             }
             child.start(task_tracker).await?;
@@ -365,11 +360,14 @@ async fn do_health_check<TStatusMonitor: StatusMonitor, TProcessInstance: Proces
             // unhealthy_timer.elapsed() resolves to around 10 seconds
             *duration_since_last_healthy_status += unhealthy_timer.elapsed();
         }
-    } else {
-        stats.current_uptime = uptime.elapsed();
+    }
+
+    if is_healthy {
         // Reset the duration once we have a healthy status
         *duration_since_last_healthy_status = Duration::from_secs(0);
     }
+
+    stats.current_uptime = uptime.elapsed();
 
     Ok(None)
 }

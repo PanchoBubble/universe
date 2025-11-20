@@ -11,46 +11,23 @@ export const WalletWrapper = styled(m.div)`
     flex-direction: column;
     display: flex;
     position: relative;
+    height: 100%;
+    justify-content: flex-end;
 `;
 
-export const Wrapper = styled.div<{ $swapsPanel?: boolean; $seedlessUI?: boolean }>`
+export const Wrapper = styled.div`
     border-radius: 20px;
     background: ${({ theme }) => (theme.mode === 'dark' ? '#2E2E2E' : '#E9E9E9')};
-    padding: 11px;
+    padding: 10px;
     display: flex;
     position: relative;
     flex-direction: column;
     overflow: hidden;
-    max-height: 100%;
     overflow-y: auto;
     width: 100%;
     gap: 8px;
-    height: 545px;
-
-    @media (max-height: 815px) {
-        height: 425px;
-        padding: 10px;
-
-        ${({ $swapsPanel, $seedlessUI }) =>
-            ($swapsPanel || $seedlessUI) &&
-            css`
-                height: auto;
-            `};
-    }
-    @media (max-height: 690px) {
-        height: 360px;
-        ${({ $swapsPanel, $seedlessUI }) =>
-            ($swapsPanel || $seedlessUI) &&
-            css`
-                height: auto;
-            `};
-    }
-
-    ${({ $swapsPanel, $seedlessUI }) =>
-        ($swapsPanel || $seedlessUI) &&
-        css`
-            height: auto;
-        `};
+    height: auto;
+    min-height: 100%;
 `;
 
 export const DetailsCard = styled(m.div)<{ $isScrolled: boolean }>`
@@ -67,16 +44,16 @@ export const DetailsCard = styled(m.div)<{ $isScrolled: boolean }>`
     will-change: height;
     height: 170px;
 
-    @media (max-height: 700px) {
-        height: 140px;
+    @media (max-height: 652px) {
+        height: 130px;
+        padding: 10px;
     }
 
     ${({ $isScrolled }) =>
         $isScrolled &&
         css`
             height: 100px;
-
-            @media (max-height: 700px) {
+            @media (max-height: 652px) {
                 height: 100px;
             }
         `}
@@ -88,22 +65,29 @@ const spin = keyframes`
   }
 `;
 
-export const AnimatedBG = styled.div<{ $col1: string; $col2: string }>`
-    background-image: ${({ $col1, $col2 }) => `linear-gradient(15deg, #000 -10%, ${$col1} 0%, ${$col2} 90%)`};
+export const AnimatedBG = styled.div<{ $col1: string; $col2: string; $isWalletFailed?: boolean }>`
+    background-image: ${({ $col1, $col2, $isWalletFailed, theme }) =>
+        $isWalletFailed
+            ? `linear-gradient(15deg, ${theme.palette.error.main || '#e03244'} 0%, ${theme.palette.error.main || '#e03244'} 100%)`
+            : `linear-gradient(15deg, #000 -10%, ${$col1} 0%, ${$col2} 90%)`};
     position: absolute;
     top: 50%;
     left: 50%;
     width: 400px;
     height: 400px;
     transform: translate(-50%, -50%);
-    animation: ${spin} 15s linear infinite;
+    animation: ${({ $isWalletFailed }) => ($isWalletFailed ? 'none' : spin)} 15s linear infinite;
     z-index: 0;
+    opacity: ${({ $isWalletFailed }) => ($isWalletFailed ? 0.1 : 1)};
 `;
 
 export const DetailsCardBottomContent = styled.div`
     display: flex;
     flex-direction: column;
     gap: 8px;
+    @media (max-height: 652px) {
+        gap: 4px;
+    }
 `;
 export const DetailsCardContent = styled.div`
     justify-content: space-between;
@@ -146,6 +130,12 @@ export const BuyTariButton = styled.button`
             transform: scale(1);
         }
     }
+`;
+
+export const WalletErrorWrapper = styled.div`
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
 `;
 
 export const TabsWrapper = styled.div`

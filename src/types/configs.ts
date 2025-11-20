@@ -1,29 +1,5 @@
-import { NodeType } from '@app/store/useNodeStore';
 import { WalletUIMode } from './events-payloads';
 
-export interface ConfigCore {
-    created_at: string;
-    is_p2pool_enabled: boolean;
-    use_tor: boolean;
-    allow_telemetry: boolean;
-    allow_notifications: boolean;
-    last_binaries_update_timestamp?: string;
-    anon_id: string;
-    should_auto_launch: boolean;
-    mmproxy_use_monero_failover: boolean;
-    mmproxy_monero_nodes: string[];
-    auto_update: boolean;
-    p2pool_stats_server_port?: number;
-    pre_release: boolean;
-    last_changelog_version: string;
-    airdrop_tokens?: {
-        token: string;
-        refreshToken: string;
-    };
-    remote_base_node_address: string;
-    node_type?: NodeType;
-    exchange_id?: string;
-}
 export interface ConfigWallet {
     created_at: string;
     monero_address: string;
@@ -43,8 +19,29 @@ export interface ConfigUI {
     show_experimental_settings: boolean;
     wallet_ui_mode: WalletUIMode;
     was_staged_security_modal_shown: boolean;
+    feedback?: FeedbackPrompts;
+    shutdown_mode_selected: boolean;
 }
 
+export interface FeedbackPrompt {
+    feedback_sent: boolean;
+    last_dismissed: {
+        secs_since_epoch?: number;
+        nanos_since_epoch?: number;
+    } | null;
+}
+
+export type PromptType = 'long_time_miner' | 'early_close';
+export type FeedbackPrompts = Partial<Record<PromptType, FeedbackPrompt>>;
+
+export type MiningModes = Record<MiningModeType, MiningMode>;
+export type MiningModeTimes = Record<MiningModeType, { secs?: number; nanos?: number }>;
+
+export enum PauseOnBatteryModeState {
+    Enabled = 'Enabled',
+    Disabled = 'Disabled',
+    NotSupported = 'NotSupported',
+}
 export interface ConfigMining {
     created_at: string;
     mine_on_app_start: boolean;
@@ -54,6 +51,10 @@ export interface ConfigMining {
     gpu_devices_settings: Record<number, GpuDeviceSettings>;
     cpu_mining_enabled: boolean;
     gpu_engine: string;
+    is_gpu_mining_recommended: boolean;
+    eco_alert_needed: boolean;
+    mode_mining_times?: MiningModeTimes;
+    pause_on_battery_mode: PauseOnBatteryModeState;
 }
 
 export interface ConfigMiningSelectors {
@@ -67,8 +68,9 @@ export interface GpuDeviceSettings {
 
 export enum MiningModeType {
     Eco = 'Eco',
-    Custom = 'Custom',
+    Turbo = 'Turbo',
     Ludicrous = 'Ludicrous',
+    Custom = 'Custom',
     User = 'User',
 }
 
@@ -86,29 +88,41 @@ export interface ConfigPools {
     // ======= Gpu Pool =======
     // When false we are solo mining with glytex, if true we are pool mining with graxil
     gpu_pool_enabled: boolean; // Whether GPU pool mining is enabled | defaults to true
-    selected_gpu_pool?: string; // Name of the selected GPU pool => defaults to LuckyPool
-    available_gpu_pools?: Record<GpuPools, BasePoolData>; // Available GPU pools
+    current_gpu_pool?: GpuPools; // Name of the selected GPU pool => defaults to LuckyPool
+    gpu_pools?: Record<GpuPools, BasePoolData>; // Available GPU pools
     // ======= Cpu Pool =======
     // When false we are solo mining with xmrig and mmproxy if true we are pool mining with xmrig
     cpu_pool_enabled: boolean; // Whether CPU pool mining is enabled | defaults to true
-    selected_cpu_pool?: string; // Name of the selected CPU pool => defaults to LuckyPool
-    available_cpu_pools?: Record<CpuPools, BasePoolData>; // Available CPU pools
+    current_cpu_pool?: CpuPools; // Name of the selected CPU pool => defaults to LuckyPool
+    cpu_pools?: Record<CpuPools, BasePoolData>; // Available CPU pools
 }
 
 export enum GpuPools {
-    LuckyPool = 'LuckyPool',
-    SupportXTMPool = 'SupportXTMPool',
+    LuckyPoolSHA3X = 'LuckyPoolSHA3X',
+    LuckyPoolC29 = 'LuckyPoolC29',
+    SupportXTMPoolSHA3X = 'SupportXTMPoolSHA3X',
+    KryptexPoolSHA3X = 'KryptexPoolSHA3X',
+    KryptexPoolC29 = 'KryptexPoolC29',
 }
 
 export enum CpuPools {
+    SupportXTMPoolRandomX = 'SupportXTMPoolRANDOMX',
+    LuckyPoolRandomX = 'LuckyPoolRANDOMX',
+    KryptexPoolRandomX = 'KryptexPoolRANDOMX',
+}
+
+export enum PoolOrigin {
+    SupportXTM = 'SupportXTM',
     LuckyPool = 'LuckyPool',
-    SupportXTMPool = 'SupportXTMPool',
+    Kryptex = 'Kryptex',
 }
 
 export interface BasePoolData {
+    pool_name: string;
+    pool_type: GpuPools | CpuPools;
+    pool_origin: PoolOrigin;
     pool_url: string;
     stats_url: string;
-    pool_name: string;
 }
 
 export interface ConfigBackendInMemory {

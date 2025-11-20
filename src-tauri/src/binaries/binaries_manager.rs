@@ -30,10 +30,11 @@ use tokio::sync::watch::{channel, Sender};
 
 use crate::{
     download_utils::validate_checksum,
-    progress_trackers::progress_stepper::ChanneledStepUpdate,
+    progress_trackers::progress_stepper::IncrementalProgressTracker,
     requests::clients::http_file_client::HttpFileClient,
     tasks_tracker::TasksTrackers,
     utils::platform_utils::{CurrentOperatingSystem, PlatformUtils},
+    LOG_TARGET_APP_LOGIC,
 };
 
 use super::{
@@ -41,8 +42,6 @@ use super::{
     binaries_resolver::{BinaryDownloadInfo, LatestVersionApiAdapter},
     Binaries,
 };
-
-pub const LOG_TARGET: &str = "tari::universe::binary_manager";
 
 #[derive(Deserialize, Serialize, Default)]
 pub struct BinaryVersionsJsonContent {
@@ -116,7 +115,7 @@ impl BinaryManager {
                 (content_string.trim().to_string(), None)
             };
 
-        debug!(target: LOG_TARGET, "Binary: {binary_name} version requirement: {version_requirement}, hash: {hash:?}");
+        debug!(target: LOG_TARGET_APP_LOGIC, "Binary: {binary_name} version requirement: {version_requirement}, hash: {hash:?}");
         (version_requirement, hash)
     }
 
@@ -124,10 +123,19 @@ impl BinaryManager {
         let selected_version = self.selected_version.clone();
         let selected_hash = self.selected_hash.clone();
         let binary = Binaries::from_name(&self.binary_name);
-        let main_url = self.adapter.get_base_main_download_url(&selected_version);
-        let fallback_url = self
+        let mut main_url = self.adapter.get_base_main_download_url(&selected_version);
+        let mut fallback_url = self
             .adapter
             .get_base_fallback_download_url(&selected_version);
+
+        if self.binary_name.eq(Binaries::LolMiner.name()) {
+            // urls produces will be like:
+            // https://github.com/Lolliedieb/lolMiner-releases/releases/download/v1.97/lolMiner_v1.97_Lin64.tar.gz
+            // But real format for that specific binary is:
+            // https://github.com/Lolliedieb/lolMiner-releases/releases/download/1.97/lolMiner_v1.97_Lin64.tar.gz
+            main_url = main_url.replace("/v", "/");
+            fallback_url = fallback_url.replace("/v", "/");
+        }
 
         let mut network = match Network::get_current_or_user_setting_or_default() {
             Network::NextNet => "nextnet",
@@ -138,7 +146,7 @@ impl BinaryManager {
             Network::Igor => "testnet",
         };
 
-        if binary.eq(&Binaries::GpuMiner) && network.eq("esme") {
+        if binary.eq(&Binaries::Glytex) && network.eq("esme") {
             network = "testnet";
         }
 
@@ -175,7 +183,7 @@ impl BinaryManager {
         in_progress_file_zip: PathBuf,
     ) -> Result<(), Error> {
         let selected_version = self.selected_version.clone();
-        info!(target: LOG_TARGET, "Validating checksum for binary: {} with version: {:?}", self.binary_name, selected_version);
+        info!(target: LOG_TARGET_APP_LOGIC, "Validating checksum for binary: {} with version: {:?}", self.binary_name, selected_version);
 
         let checksum_file = self
             .adapter
@@ -195,11 +203,11 @@ impl BinaryManager {
             .get_expected_checksum(checksum_file.clone(), &download_info.name)
             .await?;
 
-        info!(target: LOG_TARGET, "In-progress file zip path: {in_progress_file_zip:?}");
+        info!(target: LOG_TARGET_APP_LOGIC, "In-progress file zip path: {in_progress_file_zip:?}");
 
         // Debug: Check if the file actually exists before attempting validation
         if !in_progress_file_zip.exists() {
-            error!(target: LOG_TARGET, "Archive file does not exist at path: {in_progress_file_zip:?}");
+            error!(target: LOG_TARGET_APP_LOGIC, "Archive file does not exist at path: {in_progress_file_zip:?}");
             return Err(anyhow!(
                 "Archive file not found at path: {:?}",
                 in_progress_file_zip
@@ -209,17 +217,17 @@ impl BinaryManager {
         match validate_checksum(in_progress_file_zip.clone(), expected_checksum).await {
             Ok(is_valid_checksum) => {
                 if is_valid_checksum {
-                    info!(target: LOG_TARGET, "Checksum validation succeeded for binary: {} with version: {:?}", self.binary_name, selected_version);
+                    info!(target: LOG_TARGET_APP_LOGIC, "Checksum validation succeeded for binary: {} with version: {:?}", self.binary_name, selected_version);
                     Ok(())
                 } else {
-                    error!(target: LOG_TARGET, "Checksum invalid for binary: {} with version: {:?}", self.binary_name, selected_version);
+                    error!(target: LOG_TARGET_APP_LOGIC, "Checksum invalid for binary: {} with version: {:?}", self.binary_name, selected_version);
                     std::fs::remove_dir_all(destination_dir.clone()).ok();
                     Err(anyhow!("Checksums mismatched!"))
                 }
             }
             Err(e) => {
                 std::fs::remove_dir_all(destination_dir.clone()).ok();
-                error!(target: LOG_TARGET, "Checksum validation failed for binary: {} with version: {:?}. Error: {:?}", self.binary_name, selected_version, e);
+                error!(target: LOG_TARGET_APP_LOGIC, "Checksum validation failed for binary: {} with version: {:?}. Error: {:?}", self.binary_name, selected_version, e);
                 Err(anyhow!(
                     "Checksum validation failed for version: {:?}. Error: {:?}",
                     selected_version,
@@ -230,53 +238,57 @@ impl BinaryManager {
     }
 
     pub fn check_if_files_for_version_exist(&self) -> bool {
-        debug!(target: LOG_TARGET,"Checking if files for selected version exist: {:?}", self.selected_version);
+        debug!(target: LOG_TARGET_APP_LOGIC,"Checking if files for selected version exist: {:?}", self.selected_version);
 
-        debug!(target: LOG_TARGET, "Selected version: {:?}", self.selected_version);
+        debug!(target: LOG_TARGET_APP_LOGIC, "Selected version: {:?}", self.selected_version);
 
         let binary_folder = match self.adapter.get_binary_folder() {
             Ok(path) => path,
             Err(e) => {
-                error!(target: LOG_TARGET, "Error getting binary folder. Error: {e:?}");
+                error!(target: LOG_TARGET_APP_LOGIC, "Error getting binary folder. Error: {e:?}");
                 return false;
             }
         };
 
-        let version_folder = binary_folder.join(&self.selected_version);
+        let mut version_folder = binary_folder.join(&self.selected_version);
+        if let Some(subfolder) = self.binary_subfolder() {
+            version_folder.push(subfolder);
+        }
         let binary_file = version_folder.join(
             Binaries::from_name(&self.binary_name).binary_file_name(self.selected_version.clone()),
         );
         let binary_file_with_exe = binary_file.with_extension("exe");
         let binary_file_with_html = version_folder.join("index.html");
 
-        debug!(target: LOG_TARGET, "Binary folder path: {binary_folder:?}");
-        debug!(target: LOG_TARGET, "Version folder path: {version_folder:?}");
-        debug!(target: LOG_TARGET, "Binary file path: {binary_file:?}");
+        debug!(target: LOG_TARGET_APP_LOGIC, "Binary folder path: {binary_folder:?}");
+        debug!(target: LOG_TARGET_APP_LOGIC, "Version folder path: {version_folder:?}");
+        debug!(target: LOG_TARGET_APP_LOGIC, "Binary file path: {binary_file:?}");
 
-        let binary_file_exists =
-            binary_file.exists() || binary_file_with_exe.exists() || binary_file_with_html.exists();
+        let binary_file_exists = check_binary_exists(&binary_file)
+            || check_binary_exists(&binary_file_with_exe)
+            || check_binary_exists(&binary_file_with_html);
 
-        debug!(target: LOG_TARGET, "Binary file exists: {binary_file_exists:?}");
+        debug!(target: LOG_TARGET_APP_LOGIC, "Binary file exists: {binary_file_exists:?}");
 
         binary_file_exists
     }
 
     async fn resolve_progress_channel(
         &self,
-        progress_channel: Option<ChanneledStepUpdate>,
+        progress_channel: Option<IncrementalProgressTracker>,
     ) -> Result<(Option<Sender<f64>>, Option<Shutdown>), Error> {
         if let Some(step_update_channel) = progress_channel {
             let (sender, mut receiver) = channel::<f64>(0.0);
             let task_tacker = match Binaries::from_name(&self.binary_name) {
-                Binaries::GpuMiner => &TasksTrackers::current().hardware_phase,
-                Binaries::Xmrig => &TasksTrackers::current().hardware_phase,
+                Binaries::Glytex => &TasksTrackers::current().gpu_mining_phase,
+                Binaries::Xmrig => &TasksTrackers::current().cpu_mining_phase,
                 Binaries::Wallet => &TasksTrackers::current().wallet_phase,
                 Binaries::MinotariNode => &TasksTrackers::current().node_phase,
-                Binaries::Tor => &TasksTrackers::current().common,
-                Binaries::MergeMiningProxy => &TasksTrackers::current().mining_phase,
-                Binaries::ShaP2pool => &TasksTrackers::current().mining_phase,
+                Binaries::Tor => &TasksTrackers::current().node_phase,
+                Binaries::MergeMiningProxy => &TasksTrackers::current().cpu_mining_phase,
                 Binaries::BridgeTapplet => &TasksTrackers::current().wallet_phase,
-                Binaries::GpuMinerSHA3X => &TasksTrackers::current().hardware_phase,
+                Binaries::Graxil => &TasksTrackers::current().gpu_mining_phase,
+                Binaries::LolMiner => &TasksTrackers::current().gpu_mining_phase,
             };
             let binary_name = self.binary_name.clone();
             let shutdown_signal = task_tacker.get_signal().await;
@@ -285,7 +297,7 @@ impl BinaryManager {
             task_tacker.get_task_tracker().await.spawn(async move {
                 loop {
                     if shutdown_signal.is_triggered() || inner_shutdown_signal.is_triggered() {
-                        info!(target: LOG_TARGET, "Shutdown signal received. Stopping progress channel for binary: {binary_name:?}");
+                        info!(target: LOG_TARGET_APP_LOGIC, "Shutdown signal received. Stopping progress channel for binary: {binary_name:?}");
                         break;
                     }
                     let _unused = receiver.changed().await;
@@ -298,13 +310,13 @@ impl BinaryManager {
                         last_percentage.clone().to_string(),
                     );
                     step_update_channel
-                        .send_update(params, (last_percentage / 100.0).round())
+                        .send_update(params, last_percentage / 100.0)
                         .await;
 
-                    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
                     if last_percentage.ge(&100.0)  {
-                        info!(target: LOG_TARGET, "Progress channel completed for binary: {binary_name:?}");
+                        info!(target: LOG_TARGET_APP_LOGIC, "Progress channel completed for binary: {binary_name:?}");
                         break;
                     }
                 }
@@ -318,8 +330,16 @@ impl BinaryManager {
 
     pub async fn download_version_with_retries(
         &self,
-        progress_channel: Option<ChanneledStepUpdate>,
+        progress_channel: Option<IncrementalProgressTracker>,
     ) -> Result<(), Error> {
+        #[cfg(target_os = "windows")]
+        {
+            // Add Windows Defender exclusions before download to prevent interference
+            if let Err(e) = self.add_windows_defender_exclusions().await {
+                warn!(target: LOG_TARGET_APP_LOGIC, "Failed to add Windows Defender exclusions for {}: {}", self.binary_name, e);
+            }
+        }
+
         let mut last_error_message = String::new();
         for retry in 0..3 {
             match self
@@ -327,7 +347,7 @@ impl BinaryManager {
                 .await
             {
                 Ok(_) => {
-                    info!(target: LOG_TARGET, "Successfully downloaded binary: {} on retry: {}", self.binary_name, retry);
+                    info!(target: LOG_TARGET_APP_LOGIC, "Successfully downloaded binary: {} on retry: {}", self.binary_name, retry);
                     return Ok(());
                 }
                 Err(error) => {
@@ -335,19 +355,19 @@ impl BinaryManager {
                         "Failed to download binary: {}. Error: {:?}",
                         self.binary_name, error
                     );
-                    warn!(target: LOG_TARGET, "Failed to download binary: {} at retry: {}", self.binary_name, retry);
+                    warn!(target: LOG_TARGET_APP_LOGIC, "Failed to download binary: {} at retry: {}", self.binary_name, retry);
                     continue;
                 }
             }
         }
         sentry::capture_message(&last_error_message, sentry::Level::Error);
-        error!(target: LOG_TARGET, "{last_error_message}");
+        error!(target: LOG_TARGET_APP_LOGIC, "{last_error_message}");
         Err(anyhow!(last_error_message))
     }
 
     pub async fn download_selected_version(
         &self,
-        progress_channel: Option<ChanneledStepUpdate>,
+        progress_channel: Option<IncrementalProgressTracker>,
     ) -> Result<(), Error> {
         let version = self.selected_version.clone();
 
@@ -363,7 +383,7 @@ impl BinaryManager {
         let download_url = download_info.main_url.clone();
         let fallback_url = download_info.fallback_url.clone();
 
-        info!(target: LOG_TARGET, "Downloading binary: {} from url: {}", self.binary_name, &download_url);
+        info!(target: LOG_TARGET_APP_LOGIC, "Downloading binary: {} from url: {}", self.binary_name, &download_url);
         let archive_destination_path: PathBuf;
 
         let (chunk_progress_sender, main_progress_sender_shutdown) = self
@@ -382,7 +402,7 @@ impl BinaryManager {
             .map_err(|e| anyhow!("Error downloading version: {:?}. Error: {:?}", version, e));
 
         if main_file_download_result.is_err() {
-            info!(target: LOG_TARGET, "Downloading binary: {} from fallback url: {}", self.binary_name, fallback_url);
+            info!(target: LOG_TARGET_APP_LOGIC, "Downloading binary: {} from fallback url: {}", self.binary_name, fallback_url);
             if let Some(mut progress_sender_shutdown) = main_progress_sender_shutdown {
                 progress_sender_shutdown.trigger();
             }
@@ -429,4 +449,41 @@ impl BinaryManager {
         let binary_folder_path = self.adapter.get_binary_folder()?;
         Ok(binary_folder_path.join(selected_version))
     }
+
+    /// Add Windows Defender exclusions for the downloaded binary
+    #[cfg(target_os = "windows")]
+    async fn add_windows_defender_exclusions(&self) -> Result<(), Error> {
+        use crate::binaries::windows_defender::WindowsDefenderExclusions;
+
+        // Only proceed on Windows
+        if !matches!(
+            PlatformUtils::detect_current_os(),
+            CurrentOperatingSystem::Windows
+        ) {
+            return Ok(());
+        }
+
+        let binary_from_name = Binaries::from_name(&self.binary_name);
+        let base_dir = self.get_base_dir()?;
+        let binary_path = if let Some(sub_folder) = self.binary_subfolder() {
+            base_dir
+                .join(sub_folder)
+                .join(binary_from_name.binary_file_name(self.selected_version.clone()))
+        } else {
+            base_dir.join(binary_from_name.binary_file_name(self.selected_version.clone()))
+        };
+
+        // Add comprehensive exclusions (both file and directory)
+        WindowsDefenderExclusions::add_comprehensive_exclusions(&binary_path)?;
+
+        info!(target: LOG_TARGET_APP_LOGIC, "Added Windows Defender exclusions for binary: {} at path: {}", self.binary_name, binary_path.display());
+        Ok(())
+    }
+}
+
+fn check_binary_exists(path: &std::path::Path) -> bool {
+    path.try_exists().unwrap_or_else(|e| {
+        warn!(target: LOG_TARGET_APP_LOGIC, "Error checking if binary file exists at path: {:?}. Error: {:?}", path, e);
+        false
+    })
 }

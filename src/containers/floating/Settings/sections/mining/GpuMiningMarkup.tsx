@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 
 import { Typography } from '@app/components/elements/Typography.tsx';
-import { ToggleSwitch } from '@app/components/elements/ToggleSwitch.tsx';
+import { ToggleSwitch } from '@app/components/elements/inputs/switch/ToggleSwitch.tsx';
 import { useTranslation } from 'react-i18next';
 import {
     SettingsGroup,
@@ -13,18 +13,17 @@ import {
 import { useMiningMetricsStore } from '@app/store/useMiningMetricsStore.ts';
 import { setGpuMiningEnabled, useConfigMiningStore } from '@app/store';
 import { useSetupStore } from '@app/store/useSetupStore.ts';
+import { setupStoreSelectors } from '@app/store/selectors/setupStoreSelectors.ts';
 
 const GpuMiningMarkup = () => {
     const { t } = useTranslation(['settings'], { useSuspense: false });
     const isGpuMiningEnabled = useConfigMiningStore((s) => s.gpu_mining_enabled);
     const gpuDevicesHardware = useMiningMetricsStore((s) => s.gpu_devices);
-    const isHardwarePhaseFinished = useSetupStore((s) => s.hardwarePhaseFinished);
+    const gpuMiningModuleInitialized = useSetupStore(setupStoreSelectors.isGpuMiningModuleInitialized);
 
     const isGPUMiningAvailable = useMemo(() => {
         if (!gpuDevicesHardware) return false;
-        if (gpuDevicesHardware.length === 0) return false;
-
-        return true;
+        return gpuDevicesHardware.length !== 0;
     }, [gpuDevicesHardware]);
 
     const handleGpuMiningEnabled = useCallback(async () => {
@@ -46,7 +45,7 @@ const GpuMiningMarkup = () => {
                 <SettingsGroupAction>
                     <ToggleSwitch
                         checked={isGpuMiningEnabled}
-                        disabled={!isHardwarePhaseFinished}
+                        disabled={!gpuMiningModuleInitialized}
                         onChange={handleGpuMiningEnabled}
                     />
                 </SettingsGroupAction>

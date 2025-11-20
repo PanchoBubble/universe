@@ -66,14 +66,14 @@ export default function SeedPhrase() {
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent $transparentBg $unPadded>
+            <DialogContent variant="transparent">
                 <Wrapper>
                     <Header>
                         <CloseButton onClick={handleClose} />
                     </Header>
 
                     <Content>
-                        <StepChip>{`Step 1 of 2 `}</StepChip>
+                        <StepChip>{t('steps.chip', { step: 1, total: 2 })}</StepChip>
                         {content}
                     </Content>
                 </Wrapper>

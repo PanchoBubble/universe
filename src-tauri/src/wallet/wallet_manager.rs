@@ -25,28 +25,27 @@ use crate::configs::trait_config::ConfigImpl;
 use crate::events_emitter::EventsEmitter;
 use crate::internal_wallet::InternalWallet;
 use crate::node::node_manager::{NodeManager, NodeManagerError};
+use crate::process_adapter::ProcessAdapter;
 use crate::process_stats_collector::ProcessStatsCollectorBuilder;
 use crate::process_watcher::ProcessWatcher;
 use crate::tasks_tracker::TasksTrackers;
 use crate::wallet::wallet_adapter::WalletAdapter;
 use crate::wallet::wallet_status_monitor::WalletStatusMonitorError;
 use crate::wallet::wallet_types::{TransactionInfo, TransactionStatus, WalletBalance, WalletState};
-use crate::BaseNodeStatus;
+use crate::{BaseNodeStatus, LOG_TARGET_APP_LOGIC, LOG_TARGET_STATUSES};
 use futures_util::future::FusedFuture;
-use log::info;
+use log::{error, info};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Duration;
 use tari_common::configuration::Network;
-use tari_core::transactions::tari_amount::{MicroMinotari, Minotari};
 use tari_shutdown::ShutdownSignal;
+use tari_transaction_components::tari_amount::{MicroMinotari, Minotari};
 use tokio::fs;
 use tokio::sync::watch;
 use tokio::sync::RwLock;
-
-static LOG_TARGET: &str = "tari::universe::wallet_manager";
 
 #[derive(Debug, Clone)]
 pub struct WalletStartupConfig {
@@ -63,9 +62,12 @@ pub enum WalletManagerError {
     WalletNotStarted,
     #[error("Node manager error: {0}")]
     NodeManagerError(#[from] NodeManagerError),
+    #[error("Wallet failed to start and was stopped with exit code: {}", .0)]
+    ExitCode(i32),
     #[error("Unknown error: {0}")]
     UnknownError(#[from] anyhow::Error),
 }
+pub const STOP_ON_ERROR_CODES: [i32; 1] = [101];
 
 pub struct WalletManager {
     watcher: Arc<RwLock<ProcessWatcher<WalletAdapter>>>,
@@ -127,13 +129,14 @@ impl WalletManager {
         process_watcher.adapter.http_client_url = Some(self.node_manager.get_http_api_url().await);
         process_watcher.poll_time = Duration::from_secs(5);
         process_watcher.adapter.use_tor(config.use_tor);
-        info!(target: LOG_TARGET, "Using Tor: {}", config.use_tor);
+        info!(target: LOG_TARGET_APP_LOGIC, "Using Tor: {}", config.use_tor);
         process_watcher
             .adapter
             .connect_with_local_node(config.connect_with_local_node);
 
         let tari_wallet_details = InternalWallet::tari_wallet_details().await;
         process_watcher.adapter.wallet_birthday = tari_wallet_details.map(|d| d.wallet_birthday);
+        process_watcher.stop_on_exit_codes = STOP_ON_ERROR_CODES.to_vec();
 
         process_watcher
             .start(
@@ -145,8 +148,19 @@ impl WalletManager {
                 task_tracker,
             )
             .await?;
-        info!(target: LOG_TARGET, "Wallet process started successfully");
-        process_watcher.wait_ready().await?;
+        info!(target: LOG_TARGET_APP_LOGIC, "Wallet process started successfully");
+
+        match process_watcher.wait_ready().await {
+            Ok(_) => Ok::<(), anyhow::Error>(()),
+            Err(e) => {
+                let exit_code = process_watcher.stop().await?;
+                if exit_code != 0 {
+                    return Err(WalletManagerError::ExitCode(exit_code));
+                }
+                return Err(WalletManagerError::UnknownError(e));
+            }
+        }?;
+
         Ok(())
     }
 
@@ -173,6 +187,24 @@ impl WalletManager {
             .load(std::sync::atomic::Ordering::Relaxed)
     }
 
+    pub async fn on_app_exit(&self) {
+        match self
+            .watcher
+            .read()
+            .await
+            .adapter
+            .ensure_no_hanging_processes_are_running()
+            .await
+        {
+            Ok(_) => {
+                info!(target: LOG_TARGET_APP_LOGIC, "WalletManager::on_app_exit completed successfully");
+            }
+            Err(e) => {
+                error!(target: LOG_TARGET_APP_LOGIC, "WalletManager::on_app_exit failed: {}", e);
+            }
+        }
+    }
+
     pub async fn clean_data_folder(&self, base_path: &Path) -> Result<(), anyhow::Error> {
         self.initial_scan_completed
             .store(false, std::sync::atomic::Ordering::Relaxed);
@@ -185,7 +217,7 @@ impl WalletManager {
             fs::remove_dir_all(path_to_network_wallet).await?;
         }
 
-        log::info!(target: LOG_TARGET, "Cleaning wallet data folder");
+        log::info!(target: LOG_TARGET_APP_LOGIC, "Cleaning wallet data folder");
         Ok(())
     }
 
@@ -294,7 +326,9 @@ impl WalletManager {
         node_status_watch_rx: watch::Receiver<BaseNodeStatus>,
     ) -> Result<(), WalletManagerError> {
         if self.is_initial_scan_completed() {
-            log::info!(target: LOG_TARGET, "Initial wallet scan already completed, skipping");
+            // TODO - need to change this so we can get scan progress?
+            log::info!(target: LOG_TARGET_APP_LOGIC, "Initial wallet scan already completed, skipping");
+            EventsEmitter::emit_wallet_status_updated(true, None).await;
             return Ok(());
         }
 
@@ -316,7 +350,7 @@ impl WalletManager {
             loop {
                 tokio::select! {
                     _ = shutdown_signal.wait() => {
-                        log::info!(target: LOG_TARGET, "Shutdown signal received, stopping status forwarding thread");
+                        log::info!(target: LOG_TARGET_APP_LOGIC, "Shutdown signal received, stopping status forwarding thread");
                         break;
                     }
                     _ = wallet_state_rx.changed() => {
@@ -338,7 +372,7 @@ impl WalletManager {
                         }
 
                         if scanned_height > 0 && progress < 100.0 {
-                            log::info!(target: LOG_TARGET, "Initial wallet scanning: {progress}% ({scanned_height}/{current_target_height})");
+                            log::info!(target: LOG_TARGET_STATUSES, "Initial wallet scanning: {progress}% ({scanned_height}/{current_target_height})");
                             EventsEmitter::emit_init_wallet_scanning_progress(
                                 scanned_height,
                                 current_target_height,
@@ -365,22 +399,34 @@ impl WalletManager {
                     }
                     retries += 1;
                     if retries >= 10 {
-                        log::warn!(target: LOG_TARGET, "Max retries(10) reached while waiting for node status update");
+                        log::warn!(target: LOG_TARGET_APP_LOGIC, "Max retries(10) reached while waiting for node status update");
                         break 1;
                     }
-                    let _unused = node_status_watch_rx_scan.changed().await;
+                    tokio::select!{
+                        _ = node_status_watch_rx_scan.changed() => {},
+                        _ = shutdown_signal.wait() =>{
+                            break 1;
+                        }
+                    }
                 };
                 tokio::select! {
                     _ = shutdown_signal.wait() => {
-                        log::info!(target: LOG_TARGET, "Shutdown signal received, stopping wallet initial scan task");
+                        log::info!(target: LOG_TARGET_APP_LOGIC, "Shutdown signal received, stopping wallet initial scan task");
                         return Ok(());
                     }
                     result = wallet_manager.wait_for_scan_to_height(current_target_height, None) => {
                         match result {
                             Ok(scanned_wallet_state) => {
-                                let latest_height = node_status_watch_rx_scan.borrow().block_height;
+                                let node_status = *node_status_watch_rx_scan.borrow();
+                                if !node_status.is_synced {
+                                    log::info!(target: LOG_TARGET_APP_LOGIC,
+                                        "Node is not synced, continuing..");
+                                    continue;
+                                }
+
+                                let latest_height = node_status.block_height;
                                 if latest_height > current_target_height {
-                                    log::info!(target: LOG_TARGET,
+                                    log::info!(target: LOG_TARGET_APP_LOGIC,
                                         "Node height increased from {current_target_height} to {latest_height} while initial scanning, continuing..");
                                     continue;
                                 }
@@ -388,14 +434,13 @@ impl WalletManager {
                                 // Scan completed to current target height
                                 if let Some(balance) = scanned_wallet_state.balance {
                                     log::info!(
-                                        target: LOG_TARGET,
+                                        target: LOG_TARGET_APP_LOGIC,
                                         "Initial wallet scan complete up to {} block height. Available balance: {}",
                                         latest_height,
                                         balance.available_balance
                                     );
 
                                     ConfigWallet::update_field(ConfigWalletContent::set_last_known_balance, balance.available_balance).await?;
-
 
                                     EventsEmitter::emit_wallet_balance_update(balance).await;
                                     EventsEmitter::emit_init_wallet_scanning_progress(
@@ -407,12 +452,12 @@ impl WalletManager {
                                     wallet_manager.initial_scan_completed
                                         .store(true, std::sync::atomic::Ordering::Relaxed);
                                 } else {
-                                    log::warn!(target: LOG_TARGET, "Wallet Balance is None after initial scanning");
+                                    log::warn!(target: LOG_TARGET_APP_LOGIC, "Wallet Balance is None after initial scanning");
                                 }
                                 break;
                             }
                             Err(e) => {
-                                log::error!(target: LOG_TARGET, "Error during initial wallet scan: {e}");
+                                log::error!(target: LOG_TARGET_APP_LOGIC, "Error during initial wallet scan: {e}");
                                 return Err(e);
                             }
                         }
@@ -433,7 +478,7 @@ impl WalletManager {
                 WalletManager::validate_balance_after_scan(wallet_state_receiver_clone)
                     .await
                     .inspect_err(|e| {
-                        log::error!(target: LOG_TARGET, "Balance validation failed: {e}");
+                        log::error!(target: LOG_TARGET_APP_LOGIC, "Balance validation failed: {e}");
                     })
             });
 
@@ -451,7 +496,7 @@ impl WalletManager {
         loop {
             tokio::select! {
                 _ = shutdown_signal.wait() => {
-                    info!(target: LOG_TARGET, "Shutdown signal received, stopping balance validation");
+                    info!(target: LOG_TARGET_APP_LOGIC, "Shutdown signal received, stopping balance validation");
                     break;
                 }
                 _ = interval.tick() => {

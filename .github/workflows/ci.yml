@@ -19,6 +19,10 @@ concurrency:
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/v') || github.ref != 'refs/heads/development' || github.ref != 'refs/heads/nextnet' || github.ref != 'refs/heads/stagenet' }}
 
 permissions: {}
+
+env:
+  TARI_NETWORK: esmeralda
+
 jobs:
   cargo-checks:
     name: cargo checks (fmt, clippy, check)
@@ -115,7 +119,7 @@ jobs:
             opencl-headers \
             ocl-icd-opencl-dev
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: lts/*
           cache: 'npm'
@@ -158,6 +162,10 @@ jobs:
       - name: create empty dist dir
         run: |
           mkdir dist
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2.7.5
+        with:
+          workspaces: './src-tauri -> target'
 
       - name: install dependencies (linux)
         run: |

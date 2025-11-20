@@ -1,12 +1,11 @@
-import { GpuDevice, TransactionInfo, WalletBalance } from './app-status';
-import { BasePoolData, ConfigPools, CpuPools, GpuPools } from './configs';
+import { GpuDevice, TransactionInfo } from './app-status';
 
 export enum SetupPhase {
     Core = 'Core',
+    CpuMining = 'CpuMining',
+    GpuMining = 'GpuMining',
     Wallet = 'Wallet',
-    Hardware = 'Hardware',
     Node = 'Node',
-    Mining = 'Mining',
 }
 
 export enum TariAddressType {
@@ -29,7 +28,6 @@ export interface TariAddressUpdatePayload {
 export interface NewBlockHeightPayload {
     block_height: number;
     coinbase_transaction?: TransactionInfo;
-    balance: WalletBalance;
 }
 
 export interface DetectedDevicesPayload {
@@ -52,8 +50,6 @@ export interface ShowReleaseNotesPayload {
     is_app_update_available: boolean;
     should_show_dialog: boolean;
 }
-
-export type ConnectedPeersUpdatePayload = string[];
 
 export interface NodeTypeUpdatePayload {
     node_type?: 'Local' | 'Remote' | 'RemoteUntilLocal' | 'LocalAfterRemote';
@@ -83,11 +79,53 @@ export type BackgroundNodeSyncUpdatePayload =
           tip_header_height: number;
           local_block_height: number;
           tip_block_height: number;
+      }
+    | {
+          step: 'Done';
       };
 
 export type ConnectionStatusPayload = 'InProgress' | 'Succeed' | 'Failed';
 
-export interface ConfigPoolsPayload extends Omit<ConfigPools, 'available_gpu_pools' | 'available_cpu_pools'> {
-    available_gpu_pools?: [{ [GpuPools.LuckyPool]: BasePoolData }, { [GpuPools.SupportXTMPool]: BasePoolData }]; // Available GPU pools
-    available_cpu_pools?: [{ [CpuPools.LuckyPool]: BasePoolData }, { [CpuPools.SupportXTMPool]: BasePoolData }]; // Available CPU pools
+export interface ProgressTrackerUpdatePayload {
+    phase_title: string;
+    title: string;
+    progress: number;
+    title_params: Record<string, string>;
+    setup_phase: SetupPhase;
+    is_completed: boolean;
+}
+
+export enum GpuMinerType {
+    Glytex = 'Glytex',
+    Graxil = 'Graxil',
+    LolMiner = 'LolMiner',
+}
+
+export enum GpuMinerFeature {
+    SoloMining = 'SoloMining',
+    PoolMining = 'PoolMining',
+    DeviceExclusion = 'DeviceExclusion',
+    MiningIntensity = 'MiningIntensity',
+    EngineSelection = 'EngineSelection',
+}
+
+export enum GpuMiningAlgorithm {
+    SHA3X = 'SHA3X',
+    C29 = 'C29',
+}
+
+export enum MinerControlsState {
+    Initiated = 'Initiated',
+    Started = 'Started',
+    Stopped = 'Stopped',
+    Restarting = 'Restarting',
+    Idle = 'Idle',
+}
+
+export interface GpuMiner {
+    miner_type: GpuMinerType;
+    features: GpuMinerFeature[];
+    supported_algorithms: GpuMiningAlgorithm[];
+    is_healthy: boolean;
+    last_error?: string;
 }

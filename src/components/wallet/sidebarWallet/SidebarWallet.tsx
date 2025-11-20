@@ -1,9 +1,13 @@
 import { AnimatePresence } from 'motion/react';
-import { useMiningMetricsStore, useConfigUIStore, useWalletStore } from '@app/store';
+import { useNodeStore, useConfigUIStore, useWalletStore } from '@app/store';
+import { useSetupStore } from '@app/store/useSetupStore';
 import { swapTransition } from '@app/components/transactions/wallet/transitions.ts';
 import { Swap } from '@app/components/transactions/wallet/Swap/Swap.tsx';
 import { WalletBalance, WalletBalanceHidden } from '../components/balance/WalletBalance.tsx';
 import WalletDetails from '../components/details/WalletDetails.tsx';
+import { setupStoreSelectors } from '@app/store/selectors/setupStoreSelectors';
+import { AppModuleStatus } from '@app/store/types/setup';
+
 import {
     AnimatedBG,
     DetailsCard,
@@ -14,6 +18,7 @@ import {
     BuyTariButton,
     DetailsCardBottomContent,
     TabsWrapper,
+    WalletErrorWrapper,
 } from './styles.ts';
 import { useCallback, useRef, useState, useEffect, RefObject } from 'react';
 import { HistoryListWrapper } from '@app/components/wallet/components/history/styles.ts';
@@ -22,12 +27,7 @@ import { open } from '@tauri-apps/plugin-shell';
 
 import WalletActions from '@app/components/wallet/components/actions/WalletActions.tsx';
 import { TransactionDetails } from '@app/components/transactions/history/details/TransactionDetails.tsx';
-import {
-    fetchTransactionsHistory,
-    setDetailsItem,
-    setIsSwapping,
-    setTxHistoryFilter,
-} from '@app/store/actions/walletStoreActions.ts';
+import { setDetailsItem, setIsSwapping, setTxHistoryFilter } from '@app/store/actions/walletStoreActions.ts';
 
 import ExchangesUrls from '@app/components/transactions/wallet/Exchanges/ExchangesUrls.tsx';
 import { useFetchExchangeBranding } from '@app/hooks/exchanges/fetchExchangeContent.ts';
@@ -38,6 +38,8 @@ import SyncLoading from '../components/loaders/SyncLoading/SyncLoading.tsx';
 import { FilterSelect, TxHistoryFilter } from '@app/components/transactions/history/FilterSelect.tsx';
 import { WalletUIMode } from '@app/types/events-payloads.ts';
 import SecureWalletWarning from './SecureWalletWarning/SecureWalletWarning.tsx';
+import FailedModuleAlertButton from '@app/components/dialogs/FailedModuleAlertButton.tsx';
+import { useTranslation } from 'react-i18next';
 
 interface SidebarWalletProps {
     section: string;
@@ -45,19 +47,24 @@ interface SidebarWalletProps {
 }
 
 export default function SidebarWallet({ section, setSection }: SidebarWalletProps) {
+    const { t } = useTranslation('wallet');
     const { data: xcData } = useFetchExchangeBranding();
     const detailsItem = useWalletStore((s) => s.detailsItem);
     const filter = useWalletStore((s) => s.tx_history_filter);
 
-    const isConnectedToTariNetwork = useMiningMetricsStore((s) => s.isNodeConnected);
+    // Wallet module state
+    const walletModule = useSetupStore(setupStoreSelectors.selectWalletModule);
+    const isWalletModuleFailed = walletModule?.status === AppModuleStatus.Failed;
+
+    const isConnectedToTariNetwork = useNodeStore((s) => s.isNodeConnected);
     const isWalletScanning = useWalletStore((s) => s.wallet_scanning?.is_scanning);
+    const walletIsLoading = useWalletStore((s) => s.isLoading);
 
     const targetRef = useRef<HTMLDivElement>(null) as RefObject<HTMLDivElement>;
     const [isScrolled, setIsScrolled] = useState(false);
 
     function handleFilterChange(newFilter: TxHistoryFilter) {
         setTxHistoryFilter(newFilter);
-        void fetchTransactionsHistory({ offset: 0, limit: 20, filter: newFilter });
     }
 
     useEffect(() => {
@@ -92,6 +99,26 @@ export default function SidebarWallet({ section, setSection }: SidebarWalletProp
         </>
     );
 
+    const postLoadedMarkup = (
+        <>
+            {xcData?.wallet_app_link && xcData?.wallet_app_label && (
+                <ExternalLink onClick={openLink}>
+                    <Typography
+                        variant="p"
+                        style={{
+                            fontSize: '10px',
+                            color: 'rgba(255, 255, 255, 0.7)',
+                        }}
+                    >
+                        {xcData.wallet_app_label}
+                    </Typography>
+                    <ExternalLink2SVG />
+                </ExternalLink>
+            )}
+            <SecureWalletWarning $isScrolled={isScrolled} isExchangeMiner={xcData?.id !== 'universal'} />
+        </>
+    );
+
     const walletMarkup = (
         <>
             <DetailsCard $isScrolled={isScrolled}>
@@ -99,32 +126,24 @@ export default function SidebarWallet({ section, setSection }: SidebarWalletProp
                 <DetailsCardContent>
                     <WalletDetails />
                     <DetailsCardBottomContent>
-                        {isStandardWalletUI ? <WalletBalance /> : <WalletBalanceHidden />}
-                        {xcData?.wallet_app_link && xcData?.wallet_app_label && (
-                            <ExternalLink onClick={openLink}>
-                                <Typography
-                                    variant="p"
-                                    style={{
-                                        fontSize: '10px',
-                                        color: 'rgba(255, 255, 255, 0.7)',
-                                    }}
-                                >
-                                    {xcData.wallet_app_label}
-                                </Typography>
-                                <ExternalLink2SVG />
-                            </ExternalLink>
-                        )}
-                        <SecureWalletWarning $isScrolled={isScrolled} isExchangeMiner={xcData?.id !== 'universal'} />
+                        <>
+                            {isStandardWalletUI ? <WalletBalance /> : <WalletBalanceHidden />}
+                            {postLoadedMarkup}
+                        </>
                     </DetailsCardBottomContent>
                 </DetailsCardContent>
+                {isWalletModuleFailed && (
+                    <WalletErrorWrapper>
+                        <FailedModuleAlertButton />
+                    </WalletErrorWrapper>
+                )}
             </DetailsCard>
-            {isStandardWalletUI && (
+            {isStandardWalletUI && !isWalletModuleFailed && (
                 <>
                     <TabsWrapper>
                         <FilterSelect filter={filter} handleFilterChange={handleFilterChange} />
                         <WalletActions section={section} setSection={setSection} />
                     </TabsWrapper>
-
                     <HistoryListWrapper ref={targetRef}>
                         <List setIsScrolled={setIsScrolled} targetRef={targetRef} />
                     </HistoryListWrapper>
@@ -133,22 +152,33 @@ export default function SidebarWallet({ section, setSection }: SidebarWalletProp
         </>
     );
 
+    if (isWalletModuleFailed) {
+        return (
+            <AnimatePresence initial={false} mode="wait">
+                <WalletWrapper key="wallet" variants={swapTransition} initial="show" exit="hide" animate="show">
+                    <Wrapper>{walletMarkup}</Wrapper>
+                </WalletWrapper>
+            </AnimatePresence>
+        );
+    }
+
+    const standardWalletLoading = isStandardWalletUI && (isSyncing || walletIsLoading);
     return (
         <>
-            <AnimatePresence initial={false} mode="wait">
+            <AnimatePresence mode="wait">
                 {isSwapping ? (
                     <SwapsWrapper key="swap" variants={swapTransition} initial="hide" exit="hide" animate="show">
-                        <Wrapper $swapsPanel>
+                        <Wrapper>
                             <Swap />
                             <ExchangesUrls />
                         </Wrapper>
                     </SwapsWrapper>
                 ) : (
                     <WalletWrapper key="wallet" variants={swapTransition} initial="show" exit="hide" animate="show">
-                        <Wrapper $seedlessUI={!isStandardWalletUI || isSyncing}>
-                            {isSyncing && isStandardWalletUI ? <SyncLoading>{syncMarkup}</SyncLoading> : walletMarkup}
+                        <Wrapper>
+                            {standardWalletLoading ? <SyncLoading>{syncMarkup}</SyncLoading> : walletMarkup}
                             <BuyTariButton onClick={() => setIsSwapping(true)}>
-                                <span>{'Buy Tari (XTM)'}</span>
+                                <span>{`${t('swap.buy-tari')} (XTM)`}</span>
                             </BuyTariButton>
                         </Wrapper>
                     </WalletWrapper>

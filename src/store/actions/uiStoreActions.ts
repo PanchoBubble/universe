@@ -11,7 +11,6 @@ import { Theme } from '@app/theme/types.ts';
 import { ConnectionStatusPayload } from '@app/types/events-payloads.ts';
 import { SB_WIDTH } from '@app/theme/styles.ts';
 import { useConfigUIStore } from '../useAppConfigStore.ts';
-import { useSetupStore } from '../useSetupStore.ts';
 import { CONNECTION_STATUS, DialogType, sidebarTowerOffset, TOWER_CANVAS_ID } from '../types/ui.ts';
 
 export const setShowExternalDependenciesDialog = (showExternalDependenciesDialog: boolean) =>
@@ -27,38 +26,42 @@ export const setIsWebglNotSupported = (isWebglNotSupported: boolean) => {
     setVisualMode(false).then(() => useUIStore.setState({ isWebglNotSupported }));
 };
 
-async function loadAnimation() {
-    const towerSidebarOffset = useUIStore.getState().towerSidebarOffset;
-    const isInitialSetupFinished = useSetupStore.getState().isInitialSetupFinished;
-    const appUnlocked = useSetupStore.getState().appUnlocked;
-    const setupComplete = isInitialSetupFinished && appUnlocked;
+export async function loadAnimation() {
+    const visualModeEnabled = useConfigUIStore.getState().visual_mode;
+    if (!visualModeEnabled) return;
 
-    try {
-        await loadTowerAnimation({ canvasId: TOWER_CANVAS_ID, offset: towerSidebarOffset });
-        useUIStore.setState((c) => ({ ...c, towerInitalized: true }));
-        if (setupComplete) {
-            setAnimationState('showVisual');
-        }
-    } catch (e) {
-        console.error('Could not enable visual mode. Error at loadTowerAnimation:', e);
-        useUIStore.setState((c) => ({ ...c, towerInitalized: false }));
+    const uiTheme = useUIStore.getState().theme as string;
+    const preferredTheme = uiTheme === 'system' ? useUIStore.getState().preferredTheme : uiTheme;
+    const animationStyle = preferredTheme === 'dark' ? animationDarkBg : animationLightBg;
+    const towerSidebarOffset = useUIStore.getState().towerSidebarOffset;
+    const towerInitalized = useUIStore.getState().towerInitalized;
+
+    if (!towerInitalized) {
+        setAnimationProperties(animationStyle);
+        await loadTowerAnimation({ canvasId: TOWER_CANVAS_ID, offset: towerSidebarOffset })
+            .then((_) => {
+                useUIStore.setState((c) => ({ ...c, towerInitalized: true }));
+                setAnimationState('showVisual');
+            })
+            .catch((e) => {
+                console.error('Could not enable visual mode. Error at loadTowerAnimation:', e);
+                useUIStore.setState((c) => ({ ...c, towerInitalized: false }));
+            });
     }
 }
-async function removeAnimation() {
-    try {
-        await removeTowerAnimation({ canvasId: TOWER_CANVAS_ID });
-        useUIStore.setState((c) => ({ ...c, towerInitalized: false }));
-        // Force garbage collection to clean up WebGL context
-        if (window.gc) {
-            window.gc();
+export async function removeAnimation() {
+    await removeTowerAnimation({ canvasId: TOWER_CANVAS_ID }).then((removed) => {
+        if (removed) {
+            // Force garbage collection to clean up WebGL context
+            if (window.gc) {
+                window.gc();
+            }
         }
-    } catch (e) {
-        console.error('Could not disable visual mode. Error at removeTowerAnimation:', e);
-    }
+        useUIStore.setState((c) => ({ ...c, towerInitalized: !removed }));
+    });
 }
 export const toggleVisualMode = async (enabled: boolean) => {
     useConfigUIStore.setState((c) => ({ ...c, visualModeToggleLoading: true }));
-
     try {
         await setVisualMode(enabled);
         if (enabled) {
@@ -69,9 +72,8 @@ export const toggleVisualMode = async (enabled: boolean) => {
         }
     } catch (e) {
         console.error('Could not toggle visual mode. Error at setVisualMode:', e);
-    } finally {
-        useConfigUIStore.setState((c) => ({ ...c, visualModeToggleLoading: false }));
     }
+    useConfigUIStore.setState((c) => ({ ...c, visualModeToggleLoading: false }));
 };
 export const handleConnectionStatusChanged = (connectionStatus: ConnectionStatusPayload) => {
     if (connectionStatus === 'InProgress') {
@@ -100,6 +102,7 @@ export const setSeedlessUI = (seedlessUI: boolean) => useUIStore.setState((c) =>
 export const setShouldShowExchangeSpecificModal = (shouldShowExchangeSpecificModal: boolean) =>
     useUIStore.setState({ shouldShowExchangeSpecificModal });
 export const handleCloseSplashscreen = () => useUIStore.setState({ showSplashscreen: false });
+export const setIsShuttingDown = (isShuttingDown: boolean) => useUIStore.setState({ isShuttingDown });
 export const handleAskForRestart = () => {
     setDialogToShow('restart');
 };
@@ -129,3 +132,15 @@ export const animationDarkBg = [
     { property: 'particlesOpacity', value: 0.95 },
     { property: 'particlesSize', value: 0.015 },
 ];
+
+export const setShowShutdownSelectionModal = (showShutdownSelectionModal: boolean) =>
+    useUIStore.setState({ showShutdownSelectionModal });
+
+export const setShowFeedbackExitSurveyModal = (showFeedbackExitSurveyModal: boolean) =>
+    useUIStore.setState({ showFeedbackExitSurveyModal });
+
+export const updateSetMiningModeAsSchedulerEventMode = (value: boolean) => {
+    useUIStore.setState({ setMiningModeAsSchedulerEventMode: value });
+};
+
+export const setShowBatteryAlert = (showBatteryAlert: boolean) => useUIStore.setState({ showBatteryAlert });

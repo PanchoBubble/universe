@@ -5,7 +5,7 @@ export const PositionWrapper = styled(m.div)`
     position: fixed;
     top: 0;
     right: 0;
-    z-index: 99;
+    z-index: 2;
     pointer-events: none;
     height: 100%;
     padding: 12px;
@@ -41,7 +41,7 @@ export const WidgetWrapper = styled('div')<{ $isOpen: boolean; $isLogin?: boolea
     padding: 20px;
     padding-bottom: 0px;
 
-    max-height: ${({ $isLogin }) => ($isLogin ? '274px' : '115px')};
+    max-height: 115px;
 
     transition: max-height 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 
@@ -55,5 +55,15 @@ export const WidgetWrapper = styled('div')<{ $isOpen: boolean; $isLogin?: boolea
         $isOpen &&
         css`
             max-height: 830px;
+
+            &:hover {
+                max-height: 830px;
+            }
+        `}
+
+    ${({ $isLogin }) =>
+        $isLogin &&
+        css`
+            max-height: 274px;
         `}
 `;

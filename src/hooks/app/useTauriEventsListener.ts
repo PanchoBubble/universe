@@ -4,50 +4,55 @@ import { listen } from '@tauri-apps/api/event';
 import { BACKEND_STATE_UPDATE, BackendStateUpdateEvent } from '@app/types/backend-state.ts';
 
 import { handleNewBlockPayload, useBlockchainVisualisationStore } from '@app/store/useBlockchainVisualisationStore';
-import {
-    handleBaseNodeStatusUpdate,
-    handleConnectedPeersUpdate,
-    setCpuMiningStatus,
-    setGpuDevices,
-    setGpuMiningStatus,
-} from '@app/store/actions/miningMetricsStoreActions';
+import { setCpuMiningStatus, setGpuDevices, setGpuMiningStatus } from '@app/store/actions/miningMetricsStoreActions';
 import {
     handleAskForRestart,
     handleCloseSplashscreen,
     handleConnectionStatusChanged,
     setConnectionStatus,
     setDialogToShow,
+    setIsShuttingDown,
     setShouldShowExchangeSpecificModal,
-    setShowExternalDependenciesDialog,
+    setShowBatteryAlert,
+    setShowShutdownSelectionModal,
+    setSidebarOpen,
 } from '@app/store/actions/uiStoreActions';
-import { setAvailableEngines } from '@app/store/actions/miningStoreActions';
+import {
+    handleAvailableMinersChanged,
+    handleCpuMinerControlsStateChanged,
+    handleGpuMinerControlsStateChanged,
+    handleSelectedMinerChanged,
+    setAvailableEngines,
+    setShowEcoAlert,
+} from '@app/store/actions/miningStoreActions';
 import {
     handleRestartingPhases,
     handleShowRelesaeNotes,
-    loadExternalDependencies,
+    loadSystemDependencies,
     handleCriticalProblemEvent,
     setCriticalError,
     setIsStuckOnOrphanChain,
     setNetworkStatus,
+    setIsSettingsOpen,
+    handleSystrayAppShutdownRequested,
 } from '@app/store/actions/appStateStoreActions';
-import { setWalletBalance, updateWalletScanningProgress, useSecurityStore } from '@app/store';
+import {
+    handleBaseNodeStatusUpdate,
+    setWalletBalance,
+    updateWalletScanningProgress,
+    useSecurityStore,
+} from '@app/store';
 import { deepEqual } from '@app/utils/objectDeepEqual.ts';
 import {
-    handleAppUnlocked,
-    handleCpuMiningLocked,
-    handleCpuMiningUnlocked,
-    handleGpuMiningLocked,
-    handleGpuMiningUnlocked,
-    handleHardwarePhaseFinished,
+    handleAppLoaded,
+    handleAppModulesUpdate,
     handleUpdateDisabledPhases,
-    handleWalletLocked,
-    handleWalletUnlocked,
     setInitialSetupFinished,
+    updateSetupProgress,
 } from '@app/store/actions/setupStoreActions';
-import { setBackgroundNodeState, setNodeStoreState } from '@app/store/useNodeStore';
+import { setBackgroundNodeState, setNodeStoreState, setTorEntryGuards } from '@app/store/useNodeStore';
 import {
     handleExchangeIdChanged,
-    handleConfigCoreLoaded,
     handleConfigMiningLoaded,
     handleConfigUILoaded,
     handleConfigWalletLoaded,
@@ -56,13 +61,16 @@ import {
     handleGpuDevicesSettingsUpdated,
 } from '@app/store/actions/appConfigStoreActions';
 import { invoke } from '@tauri-apps/api/core';
-import { refreshTransactions } from '@app/hooks/wallet/useFetchTxHistory.ts';
+
 import { setCpuPoolStats, setGpuPoolStats } from '@app/store/actions/miningPoolsStoreActions';
 import {
     handlePinLocked,
     handleSeedBackedUp,
     handleSelectedTariAddressChange,
+    setIsWalletLoading,
 } from '@app/store/actions/walletStoreActions';
+import { handleConfigCoreLoaded } from '@app/store/actions/config/core.ts';
+import { handleFeedbackExitSurveyRequested } from '@app/store/stores/userFeedbackStore';
 
 const LOG_EVENT_TYPES = ['WalletAddressUpdate', 'CriticalProblem', 'MissingApplications'];
 
@@ -86,44 +94,20 @@ const useTauriEventsListener = () => {
                 async ({ payload: event }: { payload: BackendStateUpdateEvent }) => {
                     handleLogUpdate(event);
                     switch (event.event_type) {
-                        case 'CorePhaseFinished':
+                        case 'UpdateAppModuleStatus':
+                            await handleAppModulesUpdate(event.payload);
                             break;
-                        case 'HardwarePhaseFinished':
-                            await handleHardwarePhaseFinished();
+                        case 'SetupProgressUpdate':
+                            updateSetupProgress(event.payload);
                             break;
-                        case 'NodePhaseFinished':
-                            break;
-                        case 'MiningPhaseFinished':
-                            break;
-                        case 'WalletPhaseFinished':
+                        case 'UpdateTorEntryGuards':
+                            setTorEntryGuards(event.payload);
                             break;
                         case 'InitialSetupFinished':
                             setInitialSetupFinished(true);
                             break;
-                        case 'UnlockApp':
-                            await handleAppUnlocked();
-                            break;
-                        case 'UnlockWallet':
-                            await handleWalletUnlocked();
-                            break;
-                        case 'UnlockCpuMining':
-                            await handleCpuMiningUnlocked();
-                            break;
-                        case 'UnlockGpuMining':
-                            await handleGpuMiningUnlocked();
-                            break;
-                        case 'LockCpuMining':
-                            await handleCpuMiningLocked();
-                            break;
-                        case 'LockGpuMining':
-                            await handleGpuMiningLocked();
-                            break;
-                        case 'LockWallet':
-                            handleWalletLocked();
-                            break;
                         case 'WalletBalanceUpdate':
                             await setWalletBalance(event.payload);
-                            await refreshTransactions();
                             break;
                         case 'BaseNodeUpdate':
                             handleBaseNodeStatusUpdate(event.payload);
@@ -134,14 +118,11 @@ const useTauriEventsListener = () => {
                         case 'CpuMiningUpdate':
                             setCpuMiningStatus(event.payload);
                             break;
-                        case 'CpuPoolStatsUpdate':
+                        case 'CpuPoolsStatsUpdate':
                             setCpuPoolStats(event.payload);
                             break;
-                        case 'GpuPoolStatsUpdate':
+                        case 'GpuPoolsStatsUpdate':
                             setGpuPoolStats(event.payload);
-                            break;
-                        case 'ConnectedPeersUpdate':
-                            handleConnectedPeersUpdate(event.payload);
                             break;
                         case 'NewBlockHeight': {
                             const current = useBlockchainVisualisationStore.getState().latestBlockPayload?.block_height;
@@ -167,10 +148,19 @@ const useTauriEventsListener = () => {
                             handleConfigPoolsLoaded(event.payload);
                             break;
                         case 'CloseSplashscreen':
+                            //TODO find better place for this
+                            await handleAppLoaded();
+                            setSidebarOpen(true);
                             handleCloseSplashscreen();
                             break;
                         case 'DetectedDevices':
                             setGpuDevices(event.payload.devices);
+                            break;
+                        case 'UpdateSelectedMiner':
+                            handleSelectedMinerChanged(event.payload);
+                            break;
+                        case 'AvailableMiners':
+                            handleAvailableMinersChanged(event.payload);
                             break;
                         case 'DetectedAvailableGpuEngines':
                             setAvailableEngines(event.payload.engines, event.payload.selected_engine);
@@ -187,9 +177,8 @@ const useTauriEventsListener = () => {
                             }
                             break;
                         }
-                        case 'MissingApplications':
-                            loadExternalDependencies(event.payload);
-                            setShowExternalDependenciesDialog(true);
+                        case 'SystemDependenciesLoaded':
+                            loadSystemDependencies(event.payload);
                             break;
                         case 'StuckOnOrphanChain':
                             setIsStuckOnOrphanChain(event.payload);
@@ -253,6 +242,36 @@ const useTauriEventsListener = () => {
                             break;
                         case 'SeedBackedUp':
                             handleSeedBackedUp(event.payload);
+                            break;
+                        case 'WalletStatusUpdate':
+                            setIsWalletLoading(event.payload?.loading);
+                            break;
+                        case 'UpdateCpuMinerControlsState':
+                            handleCpuMinerControlsStateChanged(event.payload);
+                            break;
+                        case 'UpdateGpuMinerControlsState':
+                            handleGpuMinerControlsStateChanged(event.payload);
+                            break;
+                        case 'OpenSettings':
+                            setIsSettingsOpen(true);
+                            break;
+                        case 'SystrayAppShutdownRequested':
+                            handleSystrayAppShutdownRequested();
+                            break;
+                        case 'ShowEcoAlert':
+                            setShowEcoAlert(true);
+                            break;
+                        case 'FeedbackSurveyRequested':
+                            await handleFeedbackExitSurveyRequested();
+                            break;
+                        case 'ShutdownModeSelectionRequested':
+                            setShowShutdownSelectionModal(true);
+                            break;
+                        case 'ShuttingDown':
+                            setIsShuttingDown(true);
+                            break;
+                        case 'SetShowBatteryAlert':
+                            setShowBatteryAlert(event.payload);
                             break;
                         default:
                             console.warn('Unknown event', JSON.stringify(event));

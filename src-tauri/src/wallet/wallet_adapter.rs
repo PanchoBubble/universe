@@ -20,17 +20,21 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::events_emitter::EventsEmitter;
 use crate::port_allocator::PortAllocator;
 use crate::process_adapter::{ProcessAdapter, ProcessInstance, ProcessStartupSpec};
 use crate::process_adapter_utils::setup_working_directory;
 use crate::tasks_tracker::TasksTrackers;
 use crate::utils::file_utils::convert_to_string;
 use crate::utils::logging_utils::setup_logging;
+#[cfg(target_os = "windows")]
+use crate::utils::windows_setup_utils::add_firewall_rule;
 use crate::wallet::transaction_service::TransactionService;
 use crate::wallet::wallet_status_monitor::{WalletStatusMonitor, WalletStatusMonitorError};
 use crate::wallet::wallet_types::{
     ConnectivityStatus, TransactionInfo, TransactionStatus, WalletBalance, WalletState,
 };
+use crate::{LOG_TARGET_APP_LOGIC, LOG_TARGET_STATUSES};
 use anyhow::Error;
 use log::{info, warn};
 use minotari_node_grpc_client::grpc::wallet_client::WalletClient;
@@ -41,15 +45,10 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tari_common::configuration::Network;
 use tari_common_types::tari_address::{TariAddress, TariAddressError};
-use tari_core::transactions::tari_amount::MicroMinotari;
-use tari_core::transactions::transaction_components::memo_field::MemoField;
 use tari_shutdown::Shutdown;
+use tari_transaction_components::tari_amount::MicroMinotari;
+use tari_transaction_components::transaction_components::memo_field::MemoField;
 use tokio::sync::watch;
-
-#[cfg(target_os = "windows")]
-use crate::utils::windows_setup_utils::add_firewall_rule;
-
-const LOG_TARGET: &str = "tari::universe::wallet_adapter";
 
 #[derive(Serialize, Deserialize, Default)]
 struct MinotariWalletMigrationInfo {
@@ -78,7 +77,6 @@ pub struct WalletAdapter {
     connect_with_local_node: bool,
     pub(crate) view_private_key: String,
     pub(crate) spend_key: String,
-    pub(crate) tcp_listener_port: u16,
     pub(crate) grpc_port: u16,
     pub(crate) state_broadcast: watch::Sender<Option<WalletState>>,
     pub(crate) wallet_birthday: Option<u16>,
@@ -87,14 +85,12 @@ pub struct WalletAdapter {
 
 impl WalletAdapter {
     pub fn new(state_broadcast: watch::Sender<Option<WalletState>>) -> Self {
-        let tcp_listener_port = PortAllocator::new().assign_port_with_fallback();
         let grpc_port = PortAllocator::new().assign_port_with_fallback();
         Self {
             use_tor: false,
             connect_with_local_node: false,
             view_private_key: "".to_string(),
             spend_key: "".to_string(),
-            tcp_listener_port,
             grpc_port,
             state_broadcast,
             wallet_birthday: None,
@@ -206,7 +202,7 @@ impl WalletAdapter {
             Err(e) => {
                 let cancel_res = tx_service.cancel_transaction(tx_id).await;
                 if let Err(cancel_err) = cancel_res {
-                    log::error!(target: LOG_TARGET, "Failed to cancel transaction after failed to sign one sided tx: {}:{}", cancel_err, e);
+                    log::error!(target: LOG_TARGET_APP_LOGIC, "Failed to cancel transaction after failed to sign one sided tx: {cancel_err}: {e}");
                 }
                 Err(e)
             }
@@ -232,7 +228,8 @@ impl WalletAdapter {
                     if let Some(state) = current_state {
                         // Case 1: Scan has reached or exceeded target height
                         if state.scanned_height >= block_height {
-                            info!(target: LOG_TARGET, "Wallet scan completed up to block height {block_height}");
+                            info!(target: LOG_TARGET_STATUSES, "Wallet scan completed up to block height {block_height}");
+                            EventsEmitter::emit_wallet_status_updated(false, None).await;
                             return Ok(state);
                         }
                         // Case 2: Wallet is at height 0 but is connected - likely means scan finished already
@@ -241,7 +238,7 @@ impl WalletAdapter {
                                 if matches!(network.status, ConnectivityStatus::Online(3..)) {
                                     zero_scanned_height_count += 1;
                                     if zero_scanned_height_count >= 5 {
-                                        warn!(target: LOG_TARGET, "Wallet scanned before gRPC service started");
+                                        warn!(target: LOG_TARGET_STATUSES, "Wallet scanned before gRPC service started");
                                         return Ok(state);
                                     }
                                 }
@@ -250,14 +247,14 @@ impl WalletAdapter {
                     }
                 },
                 _ = shutdown_signal.wait() => {
-                    log::info!(target: LOG_TARGET, "Shutdown signal received, stopping wait_for_scan_to_height");
+                    log::info!(target: LOG_TARGET_STATUSES, "Shutdown signal received, stopping wait_for_scan_to_height");
                     return Ok(WalletState::default());
                 }
                 _ = async {
                     tokio::time::sleep(timeout.unwrap_or(Duration::MAX)).await;
                 } => {
                     warn!(
-                        target: LOG_TARGET,
+                        target: LOG_TARGET_STATUSES,
                         "Timeout reached while waiting for wallet scan to complete. Current height: {}/{}",
                         state_receiver.borrow().as_ref().map(|s| s.scanned_height).unwrap_or(0),
                         block_height
@@ -292,7 +289,7 @@ impl ProcessAdapter for WalletAdapter {
     ) -> Result<(ProcessInstance, Self::StatusMonitor), Error> {
         let inner_shutdown = Shutdown::new();
 
-        info!(target: LOG_TARGET, "Starting read only wallet");
+        info!(target: LOG_TARGET_APP_LOGIC, "Starting read only wallet");
 
         // Setup working directory using shared utility
         let working_dir = setup_working_directory(&data_dir, "wallet")?;
@@ -305,13 +302,13 @@ impl ProcessAdapter for WalletAdapter {
 
         if migration_info.version < 1 {
             if config_dir.exists() {
-                info!(target: LOG_TARGET, "Wallet migration v1: removing directory at {config_dir:?}");
+                info!(target: LOG_TARGET_APP_LOGIC, "Wallet migration v1: removing directory at {config_dir:?}");
                 let _unused = fs::remove_dir_all(config_dir).inspect_err(|e| {
-                    warn!(target: LOG_TARGET, "Wallet migration v1 Failed to remove directory: {e:?}");
+                    warn!(target: LOG_TARGET_APP_LOGIC, "Wallet migration v1 Failed to remove directory: {e:?}");
                 });
             }
 
-            info!(target: LOG_TARGET, "Wallet migration v1 complete");
+            info!(target: LOG_TARGET_APP_LOGIC, "Wallet migration v1 complete");
             migration_info.version = 1;
         }
         migration_info.save(&migration_file)?;
@@ -355,7 +352,7 @@ impl ProcessAdapter for WalletAdapter {
                 args.push(wallet_birthday.to_string());
             }
             None => {
-                warn!(target: LOG_TARGET, "Wallet birthday not specified - wallet will scan from genesis block");
+                warn!(target: LOG_TARGET_APP_LOGIC, "Wallet birthday not specified - wallet will scan from genesis block");
             }
         }
 
@@ -389,19 +386,6 @@ impl ProcessAdapter for WalletAdapter {
                 args.push("wallet.base_node.base_node_monitor_max_refresh_interval=1".to_string());
             }
             args.push("-p".to_string());
-            args.push("wallet.p2p.transport.type=tcp".to_string());
-            args.push("-p".to_string());
-            args.push(format!(
-                "wallet.p2p.public_addresses=/ip4/127.0.0.1/tcp/{}",
-                self.tcp_listener_port
-            ));
-            args.push("-p".to_string());
-            args.push(format!(
-                "wallet.p2p.transport.tcp.listener_address=/ip4/0.0.0.0/tcp/{}",
-                self.tcp_listener_port
-            ));
-
-            args.push("-p".to_string());
             let network = Network::get_current_or_user_setting_or_default();
             match network {
                 Network::MainNet => {
@@ -420,7 +404,7 @@ impl ProcessAdapter for WalletAdapter {
         }
 
         if let Err(e) = std::fs::remove_dir_all(peer_data_folder) {
-            warn!(target: LOG_TARGET, "Could not clear peer data folder: {e}");
+            warn!(target: LOG_TARGET_APP_LOGIC, "Could not clear peer data folder: {e}");
         }
 
         #[cfg(target_os = "windows")]

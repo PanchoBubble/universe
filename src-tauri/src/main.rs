@@ -24,18 +24,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use app_in_memory_config::AppInMemoryConfig;
-use commands::CpuMinerStatus;
-use cpu_miner::CpuMinerConfig;
 use events_emitter::EventsEmitter;
-use gpu_miner_adapter::GpuMinerStatus;
-use gpu_miner_sha::GpuMinerSha;
 use log::{error, info, warn};
 use mining_status_manager::MiningStatusManager;
 use node::local_node_adapter::LocalNodeAdapter;
 use node::node_adapter::BaseNodeStatus;
 use node::node_manager::NodeType;
-use p2pool::models::Connections;
-use pool_status_watcher::{PoolStatus, PoolStatusWatcher};
 use process_stats_collector::ProcessStatsCollectorBuilder;
 
 use node::remote_node_adapter::RemoteNodeAdapter;
@@ -43,7 +37,6 @@ use node::remote_node_adapter::RemoteNodeAdapter;
 use setup::setup_manager::SetupManager;
 use std::fs::{remove_dir_all, remove_file};
 use std::path::Path;
-use systemtray_manager::SystemTrayManager;
 use tasks_tracker::TasksTrackers;
 use tauri_plugin_cli::CliExt;
 use telemetry_service::TelemetryService;
@@ -70,15 +63,15 @@ use app_in_memory_config::EXCHANGE_ID;
 
 use telemetry_manager::TelemetryManager;
 
-use crate::cpu_miner::CpuMiner;
-
-use crate::commands::CpuMinerConnection;
 use crate::feedback::Feedback;
-use crate::gpu_miner::GpuMiner;
-use crate::mm_proxy_manager::{MmProxyManager, StartConfig};
+use crate::mining::cpu::manager::CpuManager;
+use crate::mining::cpu::CpuMinerStatus;
+use crate::mining::gpu::consts::GpuMinerStatus;
+use crate::mining::gpu::manager::GpuManager;
+use crate::mm_proxy_manager::MmProxyManager;
 use crate::node::node_manager::NodeManager;
-use crate::p2pool::models::P2poolStats;
-use crate::p2pool_manager::P2poolManager;
+use crate::shutdown_manager::ShutdownManager;
+use crate::systemtray_manager::SystemTrayManager;
 use crate::tor_manager::TorManager;
 use crate::wallet::wallet_manager::WalletManager;
 use crate::wallet::wallet_types::WalletState;
@@ -91,33 +84,22 @@ mod binaries;
 mod commands;
 mod configs;
 mod consts;
-mod cpu_miner;
 mod credential_manager;
 mod download_utils;
+mod event_scheduler;
 mod events;
 mod events_emitter;
 mod events_manager;
-mod external_dependencies;
 mod feedback;
-mod gpu_devices;
-mod gpu_miner;
-mod gpu_miner_adapter;
-mod gpu_miner_sha;
-mod gpu_miner_sha_adapter;
-mod gpu_miner_sha_websocket;
-mod gpu_status_file;
 mod hardware;
 mod internal_wallet;
+mod mining;
 mod mining_status_manager;
 mod mm_proxy_adapter;
 mod mm_proxy_manager;
 mod network_utils;
 mod node;
-mod p2pool;
-mod p2pool_adapter;
-mod p2pool_manager;
 mod pin;
-mod pool_status_watcher;
 mod port_allocator;
 mod process_adapter;
 mod process_adapter_utils;
@@ -129,6 +111,8 @@ mod progress_trackers;
 mod release_notes;
 mod requests;
 mod setup;
+mod shutdown_manager;
+mod system_dependencies;
 mod systemtray_manager;
 mod tapplets;
 mod tasks_tracker;
@@ -143,10 +127,11 @@ mod utils;
 mod wallet;
 mod websocket_events_manager;
 mod websocket_manager;
-mod xmrig;
-mod xmrig_adapter;
 
-const LOG_TARGET: &str = "tari::universe::main";
+pub static LOG_TARGET_DEFAULT: &str = "tari::universe"; // General logs
+pub static LOG_TARGET_STATUSES: &str = "tari::universe::statuses"; // Status updates, like hashrate, wallet sync, healthchecks
+pub static LOG_TARGET_APP_LOGIC: &str = "tari::universe::app_logic"; // App logic logs, like setup, Binary downloads, etc.
+
 const RESTART_EXIT_CODE: i32 = i32::MAX;
 const IGNORED_SENTRY_ERRORS: [&str; 2] = [
     "Failed to initialize gtk backend",
@@ -171,36 +156,20 @@ struct UniverseAppState {
     node_status_watch_rx: Arc<watch::Receiver<BaseNodeStatus>>,
     #[allow(dead_code)]
     wallet_state_watch_rx: Arc<watch::Receiver<Option<WalletState>>>,
-    cpu_miner_status_watch_rx: Arc<watch::Receiver<CpuMinerStatus>>,
-    gpu_latest_status: Arc<watch::Receiver<GpuMinerStatus>>,
-    p2pool_latest_status: Arc<watch::Receiver<Option<P2poolStats>>>,
-    is_getting_p2pool_connections: Arc<AtomicBool>,
     in_memory_config: Arc<RwLock<AppInMemoryConfig>>,
-    cpu_miner: Arc<RwLock<CpuMiner>>,
-    gpu_miner: Arc<RwLock<GpuMiner>>,
-    gpu_miner_sha: Arc<RwLock<GpuMinerSha>>,
-    cpu_miner_config: Arc<RwLock<CpuMinerConfig>>,
     mm_proxy_manager: MmProxyManager,
     node_manager: NodeManager,
     wallet_manager: WalletManager,
     telemetry_manager: Arc<RwLock<TelemetryManager>>,
     telemetry_service: Arc<RwLock<TelemetryService>>,
     feedback: Arc<RwLock<Feedback>>,
-    p2pool_manager: P2poolManager,
     tor_manager: TorManager,
     updates_manager: UpdatesManager,
-    cached_p2pool_connections: Arc<RwLock<Option<Option<Connections>>>>,
-    systemtray_manager: Arc<RwLock<SystemTrayManager>>,
     mining_status_manager: Arc<RwLock<MiningStatusManager>>,
     websocket_message_tx: Arc<tokio::sync::mpsc::Sender<WebsocketMessage>>,
     websocket_manager_status_rx: Arc<watch::Receiver<WebsocketManagerStatusMessage>>,
     websocket_manager: Arc<RwLock<WebsocketManager>>,
     websocket_event_manager: Arc<RwLock<WebsocketEventsManager>>,
-}
-
-#[derive(Clone, serde::Serialize, serde::Deserialize)]
-struct FEPayload {
-    token: Option<String>,
 }
 
 #[allow(clippy::too_many_lines)]
@@ -230,14 +199,15 @@ fn main() {
     }
 
     let client = sentry::init((
-        "https://edd6b9c1494eb7fda6ee45590b80bcee@o4504839079002112.ingest.us.sentry.io/4507979991285760",
+        "https://70e065b9de2a94787f17fca4ae83b3ce@o4509670823428096.ingest.de.sentry.io/4509674716135504",
         sentry::ClientOptions {
             release: sentry::release_name!(),
             attach_stacktrace: true,
             before_send: Some(Arc::new(|event| {
-                if event.logentry.as_ref().is_some_and(|entry| {
+                let is_in_ignored = event.logentry.as_ref().is_some_and(|entry| {
                     IGNORED_SENTRY_ERRORS.iter().any(|ignored| entry.message.starts_with(ignored))
-                }) {
+                });
+                if is_in_ignored {
                     None
                 } else {
                     Some(event)
@@ -283,37 +253,20 @@ fn main() {
         &mut stats_collector,
         base_node_watch_rx.clone(),
     );
-    let (p2pool_stats_tx, p2pool_stats_rx) = watch::channel(None);
-    let p2pool_manager = P2poolManager::new(p2pool_stats_tx, &mut stats_collector);
-
-    let cpu_config = Arc::new(RwLock::new(CpuMinerConfig {
-        node_connection: CpuMinerConnection::BuiltInProxy,
-        pool_host_name: None,
-        pool_port: None,
-        monero_address: "".to_string(),
-        pool_status_url: None,
-    }));
 
     let app_in_memory_config = Arc::new(RwLock::new(AppInMemoryConfig::default()));
-    let cpu_miner: Arc<RwLock<CpuMiner>> = Arc::new(
-        CpuMiner::new(
-            &mut stats_collector,
-            cpu_miner_status_watch_tx,
-            base_node_watch_rx.clone(),
-        )
-        .into(),
-    );
-    let gpu_miner: Arc<RwLock<GpuMiner>> = Arc::new(
-        GpuMiner::new(
-            gpu_status_tx.clone(),
-            base_node_watch_rx.clone(),
-            &mut stats_collector,
-        )
-        .into(),
-    );
 
-    let gpu_miner_sha: Arc<RwLock<GpuMinerSha>> =
-        Arc::new(GpuMinerSha::new(&mut stats_collector, gpu_status_tx.clone()).into());
+    block_on(GpuManager::initialize(
+        stats_collector.take_gpu_miner(),
+        gpu_status_tx.clone(),
+        Some(base_node_watch_rx.clone()),
+    ));
+
+    block_on(CpuManager::initialize(
+        stats_collector.take_cpu_miner(),
+        cpu_miner_status_watch_tx.clone(),
+        Some(base_node_watch_rx.clone()),
+    ));
 
     let (tor_watch_tx, tor_watch_rx) = watch::channel(TorStatus::default());
     let tor_manager = TorManager::new(tor_watch_tx, &mut stats_collector);
@@ -325,7 +278,6 @@ fn main() {
         Some(Network::default()),
         gpu_status_rx.clone(),
         base_node_watch_rx.clone(),
-        p2pool_stats_rx.clone(),
         tor_watch_rx.clone(),
         stats_collector.build(),
         node_manager.clone(),
@@ -357,28 +309,17 @@ fn main() {
         app_in_memory_config.clone(),
     );
     let app_state = UniverseAppState {
-        is_getting_p2pool_connections: Arc::new(AtomicBool::new(false)),
         node_status_watch_rx: Arc::new(base_node_watch_rx),
         wallet_state_watch_rx: Arc::new(wallet_state_watch_rx.clone()),
-        cpu_miner_status_watch_rx: Arc::new(cpu_miner_status_watch_rx),
-        gpu_latest_status: Arc::new(gpu_status_rx),
-        p2pool_latest_status: Arc::new(p2pool_stats_rx),
         in_memory_config: app_in_memory_config.clone(),
-        cpu_miner: cpu_miner.clone(),
-        gpu_miner: gpu_miner.clone(),
-        gpu_miner_sha: gpu_miner_sha.clone(),
-        cpu_miner_config: cpu_config.clone(),
         mm_proxy_manager: mm_proxy_manager.clone(),
         node_manager,
         wallet_manager,
-        p2pool_manager,
         telemetry_manager: Arc::new(RwLock::new(telemetry_manager)),
         telemetry_service: Arc::new(RwLock::new(telemetry_service)),
         feedback: Arc::new(RwLock::new(feedback)),
         tor_manager,
         updates_manager,
-        cached_p2pool_connections: Arc::new(RwLock::new(None)),
-        systemtray_manager: Arc::new(RwLock::new(SystemTrayManager::new())),
         mining_status_manager: Arc::new(RwLock::new(mining_status_manager)),
         websocket_message_tx: Arc::new(websocket_message_tx),
         websocket_manager_status_rx: Arc::new(websocket_manager_status_rx.clone()),
@@ -403,20 +344,37 @@ fn main() {
                 Some(w) => {
                     let _unused = w.show().map_err(|err| {
                         error!(
-                            target: LOG_TARGET,
+                            target: LOG_TARGET_APP_LOGIC,
                             "Couldn't show the main window {err:?}"
                         )
                     });
                     let _unused = w.set_focus();
                 }
                 None => {
-                    error!(target: LOG_TARGET, "Could not find main window");
+                    error!(target: LOG_TARGET_APP_LOGIC, "Could not find main window");
                 }
             };
         }))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_cli::init())
         .plugin(tauri_plugin_http::init())
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                block_on(async {
+                    if ShutdownManager::instance()
+                        .is_in_task_tray_shutdown_step()
+                        .await
+                    {
+                        // When in task tray mode, we await for the quit from tasktray menu and close button should just minimize to tray instead in that case
+                        SystemTrayManager::hide_to_tray(window.get_webview_window("main"));
+                    }
+                    ShutdownManager::instance()
+                        .initialize_shutdown_from_close_button()
+                        .await;
+                })
+            }
+        })
         .setup(|app| {
             let config_path = app
                 .path()
@@ -450,7 +408,7 @@ fn main() {
                     if let Some(backup_path) = matches.args.get("import-backup") {
                         if let Some(backup_path) = backup_path.value.as_str() {
                             info!(
-                                target: LOG_TARGET,
+                                target: LOG_TARGET_APP_LOGIC,
                                 "Trying to copy backup to existing db: {backup_path:?}"
                             );
                             let backup_path = Path::new(backup_path);
@@ -468,29 +426,29 @@ fn main() {
                                     .join("base_node")
                                     .join("db");
 
-                                info!(target: LOG_TARGET, "Existing db path: {existing_db:?}");
+                                info!(target: LOG_TARGET_APP_LOGIC, "Existing db path: {existing_db:?}");
                                 let _unused = fs::remove_dir_all(&existing_db).inspect_err(|e| {
                                     warn!(
-                                        target: LOG_TARGET,
+                                        target: LOG_TARGET_APP_LOGIC,
                                         "Could not remove existing db when importing backup: {e:?}"
                                     )
                                 });
                                 let _unused = fs::create_dir_all(&existing_db).inspect_err(|e| {
                                     error!(
-                                        target: LOG_TARGET,
+                                        target: LOG_TARGET_APP_LOGIC,
                                         "Could not create existing db when importing backup: {e:?}"
                                     )
                                 });
                                 let _unused = fs::copy(backup_path, existing_db.join("data.mdb"))
                                     .inspect_err(|e| {
                                         error!(
-                                            target: LOG_TARGET,
+                                            target: LOG_TARGET_APP_LOGIC,
                                             "Could not copy backup to existing db: {e:?}"
                                         )
                                     });
                             } else {
                                 warn!(
-                                    target: LOG_TARGET,
+                                    target: LOG_TARGET_APP_LOGIC,
                                     "Backup file does not exist: {backup_path:?}"
                                 );
                             }
@@ -498,7 +456,7 @@ fn main() {
                     }
                 }
                 Err(e) => {
-                    error!(target: LOG_TARGET, "Could not get cli matches: {e:?}");
+                    error!(target: LOG_TARGET_APP_LOGIC, "Could not get cli matches: {e:?}");
                     return Err(Box::new(e));
                 }
             };
@@ -519,7 +477,7 @@ fn main() {
                 if node_peer_db.exists() {
                     if let Err(e) = remove_dir_all(node_peer_db) {
                         warn!(
-                            target: LOG_TARGET,
+                            target: LOG_TARGET_APP_LOGIC,
                             "Could not clear peer data folder: {e}"
                         );
                     }
@@ -528,7 +486,7 @@ fn main() {
                 if wallet_peer_db.exists() {
                     if let Err(e) = remove_dir_all(wallet_peer_db) {
                         warn!(
-                            target: LOG_TARGET,
+                            target: LOG_TARGET_APP_LOGIC,
                             "Could not clear peer data folder: {e}"
                         );
                     }
@@ -536,7 +494,7 @@ fn main() {
 
                 remove_file(tcp_tor_toggled_file).map_err(|e| {
                     error!(
-                        target: LOG_TARGET,
+                        target: LOG_TARGET_APP_LOGIC,
                         "Could not remove tcp_tor_toggled file: {e}"
                     );
                     e.to_string()
@@ -546,20 +504,16 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            commands::close_splashscreen, // TODO: Unused
             commands::download_and_start_installer,
             commands::exit_application,
             commands::fetch_tor_bridges,
             commands::get_app_in_memory_config,
             commands::get_applications_versions,
-            commands::get_external_dependencies,
             commands::get_monero_seed_words,
             commands::get_network,
-            commands::get_p2pool_stats,
             commands::get_paper_wallet_details,
             commands::get_seed_words,
             commands::get_tor_config,
-            commands::get_tor_entry_guards,
             commands::get_transactions,
             commands::import_seed_words,
             commands::revert_to_internal_wallet,
@@ -569,7 +523,6 @@ fn main() {
             commands::restart_application,
             commands::send_feedback,
             commands::set_allow_telemetry,
-            commands::send_data_telemetry_service, // TODO: Unused
             commands::set_application_language,
             commands::set_auto_update,
             commands::set_cpu_mining_enabled,
@@ -581,7 +534,6 @@ fn main() {
             commands::set_external_tari_address,
             commands::confirm_exchange_address,
             commands::select_exchange_miner,
-            commands::set_p2pool_enabled,
             commands::set_show_experimental_settings,
             commands::set_should_always_use_system_language,
             commands::set_should_auto_launch,
@@ -594,24 +546,16 @@ fn main() {
             commands::stop_gpu_mining,
             commands::toggle_cpu_pool_mining,
             commands::toggle_gpu_pool_mining,
-            commands::get_p2pool_connections,
-            commands::set_p2pool_stats_server_port,
-            commands::get_used_p2pool_stats_server_port,
             commands::proceed_with_update,
             commands::set_pre_release,
-            commands::check_for_updates,
-            commands::try_update,
             commands::toggle_device_exclusion,
-            commands::get_network,
-            commands::sign_ws_data, // TODO: Unused
             commands::set_airdrop_tokens,
             commands::get_airdrop_tokens,
             commands::set_selected_engine,
             commands::frontend_ready,
             commands::start_mining_status,
             commands::stop_mining_status,
-            commands::websocket_connect,
-            commands::websocket_close,
+            commands::websocket_get_status,
             commands::reconnect,
             commands::send_one_sided_to_stealth_address,
             commands::verify_address_for_send,
@@ -638,18 +582,33 @@ fn main() {
             commands::update_selected_cpu_pool_config,
             commands::reset_gpu_pool_config,
             commands::reset_cpu_pool_config,
+            commands::restart_phases,
+            commands::list_connected_peers,
+            commands::switch_gpu_miner,
+            commands::set_feedback_fields,
+            commands::set_mode_mining_time,
+            commands::set_eco_alert_needed,
+            commands::mark_shutdown_selection_as_completed,
+            commands::mark_feedback_survey_as_completed,
+            commands::update_shutdown_mode_selection,
+            commands::set_pause_on_battery_mode,
+            // Scheduler commands
+            commands::add_scheduler_event,
+            commands::remove_scheduler_event,
+            commands::pause_scheduler_event,
+            commands::resume_scheduler_event,
         ])
         .build(tauri::generate_context!())
         .inspect_err(|e| {
             error!(
-                target: LOG_TARGET,
+                target: LOG_TARGET_APP_LOGIC,
                 "Error while building tauri application: {e:?}"
             )
         })
         .expect("error while running tauri application");
 
     info!(
-        target: LOG_TARGET,
+        target: LOG_TARGET_APP_LOGIC,
         "Starting Tari Universe version: {}",
         app.package_info().version
     );
@@ -663,14 +622,17 @@ fn main() {
         // We can only receive system events from the event loop so this needs to be here
         let _unused = SystemStatus::current()
             .receive_power_event(&power_monitor)
-            .inspect_err(|e| error!(target: LOG_TARGET, "Could not receive power event: {e:?}"));
+            .inspect_err(
+                |e| error!(target: LOG_TARGET_APP_LOGIC, "Could not receive power event: {e:?}"),
+            );
 
         match event {
             tauri::RunEvent::Ready => {
-                info!(target: LOG_TARGET, "RunEvent Ready");
+                info!(target: LOG_TARGET_APP_LOGIC, "RunEvent Ready");
                 let handle_clone = app_handle.clone();
                 let state = handle_clone.state::<UniverseAppState>();
 
+                block_on(ShutdownManager::instance().initialize_app_handle(handle_clone.clone()));
                 block_on(state.updates_manager.initial_try_update(&handle_clone));
 
                 tauri::async_runtime::spawn(async move {
@@ -682,8 +644,8 @@ fn main() {
             }
             tauri::RunEvent::ExitRequested { api: _, code, .. } => {
                 info!(
-                    target: LOG_TARGET,
-                    "App shutdown request caught with code: {code:#?}"
+                    target: LOG_TARGET_APP_LOGIC,
+                    "App shutdown request [ExitRequested] caught with code: {code:#?}"
                 );
                 if let Some(exit_code) = code {
                     if exit_code == RESTART_EXIT_CODE {
@@ -691,19 +653,18 @@ fn main() {
                         is_restart_requested.store(true, Ordering::SeqCst);
                     }
                 }
-                block_on(TasksTrackers::current().stop_all_processes());
-                info!(target: LOG_TARGET, "App shutdown complete");
+
+                info!(target: LOG_TARGET_APP_LOGIC, "All processes stopped");
             }
             tauri::RunEvent::Exit => {
-                info!(target: LOG_TARGET, "App shutdown caught");
-                block_on(TasksTrackers::current().stop_all_processes());
+                info!(target: LOG_TARGET_APP_LOGIC, "App shutdown [Exit] caught");
                 if is_restart_requested_clone.load(Ordering::SeqCst) {
                     app_handle.cleanup_before_exit();
                     let env = app_handle.env();
                     tauri::process::restart(&env); // this will call exit(0) so we'll not return to the event loop
                 }
                 info!(
-                    target: LOG_TARGET,
+                    target: LOG_TARGET_APP_LOGIC,
                     "Tari Universe v{} shut down successfully",
                     app_handle.package_info().version
                 );

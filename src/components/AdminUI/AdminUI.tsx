@@ -16,7 +16,10 @@ import { ThemeGroup } from './groups/ThemeGroup';
 import { DialogsGroup } from './groups/DialogsGroup';
 import { GreenModalsGroup } from './groups/GreenModalsGroup';
 import { OtherUIGroup } from './groups/OtherUIGroup';
+import { ToastsGroup } from './groups/ToastsGroup';
+import { CollapsibleGroup } from './CollapsibleGroup';
 import { AnimatePresence } from 'motion/react';
+import { FeedbackGroup } from './groups/FeedbackGroup.tsx';
 
 const AdminUI = memo(function AdminUI() {
     const [isOpen, setIsOpen] = useState(false);
@@ -38,26 +41,40 @@ const AdminUI = memo(function AdminUI() {
             <ToggleButton ref={refs.setReference} {...getReferenceProps()} $isOpen={isOpen}>
                 {`Admin UI`}
             </ToggleButton>
-            <AnimatePresence>
-                <FloatingNode id={nodeId}>
-                    <FloatingPortal>
-                        {isOpen && (
+            <FloatingNode id={nodeId}>
+                <AnimatePresence>
+                    {isOpen ? (
+                        <FloatingPortal>
                             <MenuWrapper ref={refs.setFloating} style={floatingStyles} {...getFloatingProps()}>
                                 <MenuContent
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: 10 }}
                                 >
-                                    <ThemeGroup />
-                                    <DialogsGroup />
-                                    <GreenModalsGroup />
-                                    <OtherUIGroup />
+                                    <CollapsibleGroup title="Theme" defaultOpen={true}>
+                                        <ThemeGroup />
+                                    </CollapsibleGroup>
+                                    <CollapsibleGroup title="Feedback" defaultOpen={true}>
+                                        <FeedbackGroup />
+                                    </CollapsibleGroup>
+                                    <CollapsibleGroup title="Dialogs" defaultOpen={false}>
+                                        <DialogsGroup />
+                                    </CollapsibleGroup>
+                                    <CollapsibleGroup title="Green Modals" defaultOpen={false}>
+                                        <GreenModalsGroup />
+                                    </CollapsibleGroup>
+                                    <CollapsibleGroup title="Toasts" defaultOpen={false}>
+                                        <ToastsGroup />
+                                    </CollapsibleGroup>
+                                    <CollapsibleGroup title="Other UI" defaultOpen={false}>
+                                        <OtherUIGroup />
+                                    </CollapsibleGroup>
                                 </MenuContent>
                             </MenuWrapper>
-                        )}
-                    </FloatingPortal>
-                </FloatingNode>
-            </AnimatePresence>
+                        </FloatingPortal>
+                    ) : null}
+                </AnimatePresence>
+            </FloatingNode>
         </>
     );
 });

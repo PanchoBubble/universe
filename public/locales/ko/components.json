@@ -4,6 +4,19 @@
     "body-copy-highlight": "타리는 완전히 새롭습니다!",
     "is-live": "실시간"
   },
+  "battery-alert-dialog": {
+    "auto-resume-info": "Mining will automatically resume when AC power is connected",
+    "description": "We've noticed your device is running on battery power. To help preserve your battery life and ensure optimal performance, we've temporarily paused mining. Mining will automatically resume when your device is connected to a power source.",
+    "title": "Mining Paused - Battery Mode Detected",
+    "understood": "I Understand"
+  },
+  "close-experience-dialog": {
+    "description": "You can either minimize the app to system tray to keep mining in the background, or exit completely to stop all processes.",
+    "dont-ask-again": "Don't ask me again",
+    "exit-completely": "Exit Completely",
+    "run-in-background": "Run in Background",
+    "title": "Choose how to close Tari Universe"
+  },
   "field-error-message": {
     "integers-only": "정수만 허용됨",
     "invalid": "잘못된 필드",
@@ -29,7 +42,6 @@
     "resuming-all-processes": "모든 프로세스 재개 중...",
     "resuming-mm-proxy": "MM 프록시 재개 중...",
     "resuming-node": "노드 재개 중...",
-    "resuming-p2pool": "P2Pool 재개 중...",
     "resuming-tor": "Tor 재개 중...",
     "resuming-wallet": "지갑 재개 중...",
     "syncing-node": "노드 동기화 중...",

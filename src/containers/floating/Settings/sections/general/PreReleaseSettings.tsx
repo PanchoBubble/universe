@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { ToggleSwitch } from '@app/components/elements/ToggleSwitch';
+import { ToggleSwitch } from '@app/components/elements/inputs/switch/ToggleSwitch';
 import { useCallback, useState } from 'react';
 import { Typography } from '@app/components/elements/Typography.tsx';
 import {
@@ -10,7 +10,8 @@ import {
     SettingsGroupAction,
 } from '../../components/SettingsGroup.styles';
 import ConfirmationDialog from '@app/components/dialogs/ConfirmationDialog';
-import { setPreRelease, useConfigCoreStore } from '@app/store';
+import { setPreRelease } from '@app/store/actions/config/core.ts';
+import { useConfigCoreStore } from '@app/store/stores/config/useConfigCoreStore.ts';
 
 export default function PreReleaseSettings() {
     const { t } = useTranslation('settings', { useSuspense: false });

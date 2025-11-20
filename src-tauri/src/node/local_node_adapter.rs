@@ -29,6 +29,7 @@ use crate::port_allocator::PortAllocator;
 use crate::process_adapter::{ProcessAdapter, ProcessInstance, ProcessStartupSpec};
 use crate::utils::file_utils::convert_to_string;
 use crate::utils::logging_utils::setup_logging;
+use crate::LOG_TARGET_APP_LOGIC;
 use async_trait::async_trait;
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
@@ -43,8 +44,6 @@ use tokio::sync::watch;
 
 #[cfg(target_os = "windows")]
 use crate::utils::windows_setup_utils::add_firewall_rule;
-
-const LOG_TARGET: &str = "tari::universe::local_node_adapter";
 
 #[derive(Serialize, Deserialize, Default)]
 struct MinotariNodeMigrationInfo {
@@ -64,7 +63,10 @@ impl MinotariNodeMigrationInfo {
         }
         let contents = fs::read_to_string(path)?;
 
-        Ok(serde_json::from_str(contents.as_str())?)
+        let deserialized_content =
+            serde_json::from_str(&contents).unwrap_or(MinotariNodeMigrationInfo::default());
+
+        Ok(deserialized_content)
     }
 }
 
@@ -127,7 +129,7 @@ impl NodeAdapter for LocalNodeAdapter {
     }
 
     fn set_grpc_address(&mut self, _grpc_address: String) -> Result<(), anyhow::Error> {
-        log::error!(target: LOG_TARGET, "Attempted to set gRPC address for local node, which is fixed to localhost.");
+        log::error!(target: LOG_TARGET_APP_LOGIC, "Attempted to set gRPC address for local node, which is fixed to localhost.");
         Ok(())
     }
 
@@ -178,7 +180,7 @@ impl ProcessAdapter for LocalNodeAdapter {
     ) -> Result<(ProcessInstance, Self::StatusMonitor), anyhow::Error> {
         let inner_shutdown = Shutdown::new();
 
-        info!(target: LOG_TARGET, "Starting minotari node");
+        info!(target: LOG_TARGET_APP_LOGIC, "Starting minotari node");
         let working_dir: PathBuf = data_dir.join("node");
         let network_dir = working_dir.join(Network::get_current().to_string().to_lowercase());
         fs::create_dir_all(&network_dir)?;
@@ -201,14 +203,14 @@ impl ProcessAdapter for LocalNodeAdapter {
 
             for dir in dirs {
                 if dir.exists() {
-                    info!(target: LOG_TARGET, "Node migration v2: removing directory at {dir:?}");
+                    info!(target: LOG_TARGET_APP_LOGIC, "Node migration v2: removing directory at {dir:?}");
                     let _unused = fs::remove_dir_all(dir).inspect_err(|e| {
-                        warn!(target: LOG_TARGET, "Failed to remove directory: {e:?}");
+                        warn!(target: LOG_TARGET_APP_LOGIC, "Failed to remove directory: {e:?}");
                     });
                 }
             }
 
-            info!(target: LOG_TARGET, "Node Migration v2 complete");
+            info!(target: LOG_TARGET_APP_LOGIC, "Node Migration v2 complete");
             migration_info.version = 2;
         }
         migration_info.save(&migration_file)?;
@@ -216,9 +218,9 @@ impl ProcessAdapter for LocalNodeAdapter {
         // Remove peerdb on every restart as requested by Protocol team
         let peer_db_dir = network_dir.join("peer_db");
         if peer_db_dir.exists() {
-            info!(target: LOG_TARGET, "Removing peer db at {peer_db_dir:?}");
+            info!(target: LOG_TARGET_APP_LOGIC, "Removing peer db at {peer_db_dir:?}");
             let _unused = fs::remove_dir_all(peer_db_dir).inspect_err(|e| {
-                warn!(target: LOG_TARGET, "Failed to remove peer db: {e:?}");
+                warn!(target: LOG_TARGET_APP_LOGIC, "Failed to remove peer db: {e:?}");
             });
         }
 
@@ -285,6 +287,8 @@ impl ProcessAdapter for LocalNodeAdapter {
             //     "base_node.p2p.transport.tor.listener_address_override=/ip4/127.0.0.1/tcp/18189"
             //         .to_string(),
             // );
+            args.push("-p".to_string());
+            args.push("base_node.p2p.transport.type=tor".to_string());
             if !cfg!(target_os = "macos") {
                 args.push("-p".to_string());
                 args.push("use_libtor=false".to_string());
@@ -325,16 +329,6 @@ impl ProcessAdapter for LocalNodeAdapter {
         } else {
             args.push("-p".to_string());
             args.push("base_node.p2p.transport.type=tcp".to_string());
-            args.push("-p".to_string());
-            args.push(format!(
-                "base_node.p2p.public_addresses=/ip4/127.0.0.1/tcp/{}",
-                self.tcp_listener_port
-            ));
-            args.push("-p".to_string());
-            args.push(format!(
-                "base_node.p2p.transport.tcp.listener_address=/ip4/127.0.0.1/tcp/{}",
-                self.tcp_listener_port
-            ));
             let network = Network::get_current_or_user_setting_or_default();
             args.push("-p".to_string());
             match network {
@@ -355,7 +349,7 @@ impl ProcessAdapter for LocalNodeAdapter {
 
         // AB testing
         if self.ab_test_group == ABTestSelector::GroupB {
-            info!(target: LOG_TARGET, "Using AB test group B");
+            info!(target: LOG_TARGET_APP_LOGIC, "Using AB test group B");
 
             args.push("-p".to_string());
             args.push("base_node.p2p.dht.num_neighbouring_nodes=4".to_string());
@@ -364,7 +358,7 @@ impl ProcessAdapter for LocalNodeAdapter {
             args.push("-p".to_string());
             args.push("base_node.p2p.dht.minimize_connections=true".to_string());
         } else {
-            info!(target: LOG_TARGET, "Using AB test group A");
+            info!(target: LOG_TARGET_APP_LOGIC, "Using AB test group A");
             args.push("-p".to_string());
             args.push("base_node.p2p.dht.minimize_connections=false".to_string());
         }

@@ -1,4 +1,4 @@
-import { create } from './create';
+import { create } from 'zustand';
 import { Theme } from '@app/theme/types.ts';
 import { AdminShow, CONNECTION_STATUS, DialogType, sidebarTowerOffset, SidebarType } from '@app/store/types/ui.ts';
 
@@ -22,6 +22,12 @@ interface UIStoreState {
     towerSidebarOffset: number;
     towerInitalized: boolean;
     showTapplet: boolean;
+    isShuttingDown: boolean;
+    seedlessUI: boolean;
+    setMiningModeAsSchedulerEventMode: boolean;
+    showShutdownSelectionModal: boolean;
+    showFeedbackExitSurveyModal: boolean;
+    showBatteryAlert: boolean;
 }
 const preferredTheme = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 
@@ -43,6 +49,12 @@ const initialState: UIStoreState = {
     towerSidebarOffset: sidebarTowerOffset,
     towerInitalized: false,
     showTapplet: false,
+    isShuttingDown: false,
+    seedlessUI: false,
+    setMiningModeAsSchedulerEventMode: false,
+    showShutdownSelectionModal: false,
+    showFeedbackExitSurveyModal: false,
+    showBatteryAlert: false,
 };
 
 export const useUIStore = create<UIStoreState>()(() => ({

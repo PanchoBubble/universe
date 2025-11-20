@@ -1,6 +1,6 @@
 import CrewSection from './sections/CrewSection/CrewSection';
 import MainSection from './sections/MainSection/MainSection';
-import StreakProgress from './sections/StreakProgress/StreakProgress';
+//import StreakProgress from './sections/StreakProgress/StreakProgress';
 
 import { Holder, PositionWrapper, WidgetWrapper } from './styles';
 import { useCrewRewardsStore } from '../../../../store/useCrewRewardsStore';
@@ -16,9 +16,8 @@ const introAnimation = {
 };
 
 export default function RewardsWidget() {
-    const { isOpen } = useCrewRewardsStore();
+    const { isOpen, isMinimized } = useCrewRewardsStore();
     const isLoggedIn = useAirdropStore((s) => !!s.airdropTokens);
-    const { isMinimized } = useCrewRewardsStore();
 
     if (isMinimized) {
         return (
@@ -34,7 +33,7 @@ export default function RewardsWidget() {
         return (
             <PositionWrapper {...introAnimation}>
                 <Holder>
-                    <WidgetWrapper $isOpen={isOpen} $isLogin={true}>
+                    <WidgetWrapper $isOpen={false} $isLogin={true}>
                         <LoginSection />
                     </WidgetWrapper>
                 </Holder>
@@ -49,7 +48,8 @@ export default function RewardsWidget() {
                     <MainSection />
                     <AnimatePresence>{isOpen && <CrewSection />}</AnimatePresence>
                 </WidgetWrapper>
-                {!isOpen && <StreakProgress />}
+
+                {/* {!isOpen && <StreakProgress />} */}
             </Holder>
         </PositionWrapper>
     );

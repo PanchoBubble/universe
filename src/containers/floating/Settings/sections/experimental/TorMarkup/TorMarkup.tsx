@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { setError } from '@app/store/actions';
 
-import { ToggleSwitch } from '@app/components/elements/ToggleSwitch.tsx';
+import { ToggleSwitch } from '@app/components/elements/inputs/switch/ToggleSwitch.tsx';
 
 import { Typography } from '@app/components/elements/Typography';
 import { TorConfig } from '@app/types/app-status';
@@ -23,7 +23,8 @@ import { TorDebug } from './TorDebug';
 import { ErrorTypography, StyledInput, TorSettingsContainer } from './TorMarkup.styles';
 
 import { type } from '@tauri-apps/plugin-os';
-import { setUseTor, useConfigCoreStore } from '@app/store';
+import { setUseTor } from '@app/store/actions/config/core.ts';
+import { useConfigCoreStore } from '@app/store/stores/config/useConfigCoreStore.ts';
 
 interface EditedTorConfig {
     // it's also string here to prevent an empty value
@@ -33,7 +34,6 @@ interface EditedTorConfig {
 }
 
 const hasBridgeError = (bridge: string) => {
-    // TODO: How should we validate the bridge? (IPv4, IPv6, different formats)
     return !bridge || bridge.trim().length === 0;
 };
 
@@ -59,6 +59,7 @@ export const TorMarkup = () => {
             setHasCheckedOs(true);
         }
     }, []);
+
     useEffect(() => {
         if (hasCheckedOs) return;
         checkPlatform();
@@ -151,7 +152,11 @@ export const TorMarkup = () => {
                         <Typography>{t('setup-tor-settings')}</Typography>
                     </SettingsGroupContent>
                     <SettingsGroupAction style={{ alignItems: 'center' }}>
-                        {isSaveButtonVisible && <Button onClick={onSave}>{t('save')}</Button>}
+                        {isSaveButtonVisible && (
+                            <Button size="smaller" onClick={onSave}>
+                                {t('save')}
+                            </Button>
+                        )}
                         <ToggleSwitch checked={editedUseTor} onChange={() => setEditedUseTor((p) => !p)} />
                     </SettingsGroupAction>
                 </SettingsGroup>
@@ -167,7 +172,6 @@ export const TorMarkup = () => {
                             <Typography variant="h6">{t('control-port')}</Typography>
                             <ToggleSwitch
                                 label={t('use-random-control-port')}
-                                variant="gradient"
                                 checked={isRandomControlPort}
                                 onChange={toggleRandomControlPort}
                             />
@@ -204,7 +208,6 @@ export const TorMarkup = () => {
                             <Typography variant="h6">{t('tor-bridges')}</Typography>
                             <ToggleSwitch
                                 label={t('use-tor-bridges')}
-                                variant="gradient"
                                 checked={editedConfig.use_bridges}
                                 onChange={toggleUseBridges}
                             />
@@ -245,7 +248,7 @@ export const TorMarkup = () => {
                     </TorSettingsContainer>
                 ) : null}
             </SettingsGroupWrapper>
-            {defaultUseTor && hasCheckedOs && <TorDebug isMac={isMac} />}
+            {defaultUseTor && hasCheckedOs && <TorDebug />}
         </>
     );
 };

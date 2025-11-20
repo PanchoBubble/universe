@@ -1,4 +1,4 @@
-import { ToggleSwitch } from '@app/components/elements/ToggleSwitch.tsx';
+import { ToggleSwitch } from '@app/components/elements/inputs/switch/ToggleSwitch.tsx';
 import { Trans, useTranslation } from 'react-i18next';
 import { Typography } from '@app/components/elements/Typography';
 import { IoAddCircleOutline, IoRemoveCircleOutline } from 'react-icons/io5';
@@ -17,7 +17,8 @@ import {
     SettingsGroupTitle,
     SettingsGroupWrapper,
 } from '../../../components/SettingsGroup.styles.ts';
-import { setMonerodConfig, useConfigCoreStore } from '@app/store';
+import { useConfigCoreStore } from '@app/store/stores/config/useConfigCoreStore.ts';
+import { setMonerodConfig } from '@app/store/actions/config/core.ts';
 
 interface FormValues {
     use_monero_fail: boolean;
@@ -71,7 +72,9 @@ const MonerodMarkup = () => {
                 </SettingsGroupContent>
                 <SettingsGroupAction>
                     {isSaveButtonVisible ? (
-                        <Button onClick={handleSubmit(onSave)}>{t('save')}</Button>
+                        <Button size="smaller" onClick={handleSubmit(onSave)}>
+                            {t('save')}
+                        </Button>
                     ) : (
                         <Controller
                             name="use_monero_fail"

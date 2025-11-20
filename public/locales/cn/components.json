@@ -4,6 +4,19 @@
     "body-copy-highlight": "Tari是全新的！",
     "is-live": "已上线"
   },
+  "battery-alert-dialog": {
+    "auto-resume-info": "Mining will automatically resume when AC power is connected",
+    "description": "We've noticed your device is running on battery power. To help preserve your battery life and ensure optimal performance, we've temporarily paused mining. Mining will automatically resume when your device is connected to a power source.",
+    "title": "Mining Paused - Battery Mode Detected",
+    "understood": "I Understand"
+  },
+  "close-experience-dialog": {
+    "description": "You can either minimize the app to system tray to keep mining in the background, or exit completely to stop all processes.",
+    "dont-ask-again": "Don't ask me again",
+    "exit-completely": "Exit Completely",
+    "run-in-background": "Run in Background",
+    "title": "Choose how to close Tari Universe"
+  },
   "field-error-message": {
     "integers-only": "只允许整数",
     "invalid": "字段无效",
@@ -29,7 +42,6 @@
     "resuming-all-processes": "恢复所有进程...",
     "resuming-mm-proxy": "恢复 MM 代理...",
     "resuming-node": "恢复节点...",
-    "resuming-p2pool": "恢复 P2Pool...",
     "resuming-tor": "恢复 Tor...",
     "resuming-wallet": "恢复钱包...",
     "syncing-node": "同步节点...",

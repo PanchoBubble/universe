@@ -1,13 +1,15 @@
 import {
     BackgroundNodeSyncUpdatePayload,
-    ConfigPoolsPayload,
-    ConnectedPeersUpdatePayload,
     ConnectionStatusPayload,
     CriticalProblemPayload,
     DetectedAvailableGpuEngines,
     DetectedDevicesPayload,
+    GpuMiner,
+    GpuMinerType,
+    MinerControlsState,
     NewBlockHeightPayload,
     NodeTypeUpdatePayload,
+    ProgressTrackerUpdatePayload,
     SetupPhase,
     ShowReleaseNotesPayload,
     TariAddressUpdatePayload,
@@ -16,17 +18,31 @@ import {
 import {
     BaseNodeStatus,
     CpuMinerStatus,
-    ExternalDependency,
     GpuMinerStatus,
     NetworkStatus,
     PoolStats,
+    SystemDependency,
     WalletBalance,
 } from './app-status.ts';
-import { ConfigCore, ConfigMining, ConfigUI, ConfigWallet, GpuDeviceSettings } from './configs.ts';
+import { ConfigMining, ConfigPools, ConfigUI, ConfigWallet, GpuDeviceSettings } from './configs.ts';
 import { DisabledPhasesPayload } from '@app/store/actions/setupStoreActions.ts';
+import { AppModuleState } from '@app/store/types/setup.ts';
+import { ConfigCore } from '@app/types/config/core.ts';
 
 export const BACKEND_STATE_UPDATE = 'backend_state_update';
 export type BackendStateUpdateEvent =
+    | {
+          event_type: 'UpdateAppModuleStatus';
+          payload: AppModuleState;
+      }
+    | {
+          event_type: 'UpdateTorEntryGuards';
+          payload: string[];
+      }
+    | {
+          event_type: 'SetupProgressUpdate';
+          payload: ProgressTrackerUpdatePayload;
+      }
     | {
           event_type: 'BaseNodeUpdate';
           payload: BaseNodeStatus;
@@ -42,10 +58,6 @@ export type BackendStateUpdateEvent =
     | {
           event_type: 'GpuMiningUpdate';
           payload: GpuMinerStatus;
-      }
-    | {
-          event_type: 'ConnectedPeersUpdate';
-          payload: ConnectedPeersUpdatePayload;
       }
     | {
           event_type: 'NewBlockHeight';
@@ -68,8 +80,8 @@ export type BackendStateUpdateEvent =
           payload: CriticalProblemPayload;
       }
     | {
-          event_type: 'MissingApplications';
-          payload: ExternalDependency[];
+          event_type: 'SystemDependenciesLoaded';
+          payload: SystemDependency[];
       }
     | {
           event_type: 'StuckOnOrphanChain';
@@ -84,55 +96,7 @@ export type BackendStateUpdateEvent =
           payload: NetworkStatus;
       }
     | {
-          event_type: 'CorePhaseFinished';
-          payload: boolean;
-      }
-    | {
-          event_type: 'WalletPhaseFinished';
-          payload: boolean;
-      }
-    | {
-          event_type: 'HardwarePhaseFinished';
-          payload: boolean;
-      }
-    | {
-          event_type: 'NodePhaseFinished';
-          payload: boolean;
-      }
-    | {
-          event_type: 'MiningPhaseFinished';
-          payload: boolean;
-      }
-    | {
           event_type: 'InitialSetupFinished';
-          payload: undefined;
-      }
-    | {
-          event_type: 'UnlockApp';
-          payload: undefined;
-      }
-    | {
-          event_type: 'UnlockWallet';
-          payload: undefined;
-      }
-    | {
-          event_type: 'UnlockCpuMining';
-          payload: undefined;
-      }
-    | {
-          event_type: 'UnlockGpuMining';
-          payload: undefined;
-      }
-    | {
-          event_type: 'LockWallet';
-          payload: undefined;
-      }
-    | {
-          event_type: 'LockGpuMining';
-          payload: undefined;
-      }
-    | {
-          event_type: 'LockCpuMining';
           payload: undefined;
       }
     | {
@@ -157,7 +121,7 @@ export type BackendStateUpdateEvent =
       }
     | {
           event_type: 'ConfigPoolsLoaded';
-          payload: ConfigPoolsPayload;
+          payload: ConfigPools;
       }
     | {
           event_type: 'RestartingPhases';
@@ -184,12 +148,12 @@ export type BackendStateUpdateEvent =
           payload: ConnectionStatusPayload;
       }
     | {
-          event_type: 'CpuPoolStatsUpdate';
-          payload: PoolStats;
+          event_type: 'CpuPoolsStatsUpdate';
+          payload: Record<string, PoolStats>;
       }
     | {
-          event_type: 'GpuPoolStatsUpdate';
-          payload: PoolStats;
+          event_type: 'GpuPoolsStatsUpdate';
+          payload: Record<string, PoolStats>;
       }
     | {
           event_type: 'ExchangeIdChanged';
@@ -233,5 +197,56 @@ export type BackendStateUpdateEvent =
       }
     | {
           event_type: 'SeedBackedUp';
+          payload: boolean;
+      }
+    | {
+          event_type: 'UpdateSelectedMiner';
+          payload: GpuMinerType;
+      }
+    | {
+          event_type: 'AvailableMiners';
+          payload: Record<GpuMinerType, GpuMiner>;
+      }
+    | {
+          event_type: 'WalletStatusUpdate';
+          payload: {
+              loading: boolean;
+              unhealthy?: boolean;
+          };
+      }
+    | {
+          event_type: 'UpdateCpuMinerControlsState';
+          payload: MinerControlsState;
+      }
+    | {
+          event_type: 'UpdateGpuMinerControlsState';
+          payload: MinerControlsState;
+      }
+    | {
+          event_type: 'OpenSettings';
+          payload: undefined;
+      }
+    | {
+          event_type: 'SystrayAppShutdownRequested';
+          payload: undefined;
+      }
+    | {
+          event_type: 'ShowEcoAlert';
+          payload: undefined;
+      }
+    | {
+          event_type: 'FeedbackSurveyRequested';
+          payload: undefined;
+      }
+    | {
+          event_type: 'ShutdownModeSelectionRequested';
+          payload: undefined;
+      }
+    | {
+          event_type: 'ShuttingDown';
+          payload: undefined;
+      }
+    | {
+          event_type: 'SetShowBatteryAlert';
           payload: boolean;
       };

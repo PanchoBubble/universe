@@ -1,4 +1,4 @@
-import { useConfigPoolsStore } from '@app/store';
+import { useConfigPoolsStore, useMiningMetricsStore } from '@app/store';
 import { useTranslation } from 'react-i18next';
 import {
     SettingsGroup,
@@ -8,7 +8,7 @@ import {
     SettingsGroupWrapper,
 } from '../../components/SettingsGroup.styles';
 import { Typography } from '@app/components/elements/Typography';
-import { ToggleSwitch } from '@app/components/elements/ToggleSwitch';
+import { ToggleSwitch } from '@app/components/elements/inputs/switch/ToggleSwitch';
 import {
     changeGpuPool,
     changeGpuPoolConfiguration,
@@ -22,12 +22,13 @@ import { useShallow } from 'zustand/react/shallow';
 import { useCallback, useMemo } from 'react';
 import { Select } from '@app/components/elements/inputs/Select';
 import { PoolConfiguration } from './PoolsConfiguration';
-import { BasePoolData } from '@app/types/configs';
+import { BasePoolData, GpuPools } from '@app/types/configs';
 
 export const GpuPoolsSettings = () => {
     const { t } = useTranslation('settings');
     const isGpuPoolEnabled = useConfigPoolsStore((state) => state.gpu_pool_enabled);
     const pool_status = useMiningPoolsStore((s) => s.gpuPoolStats);
+    const isMining = useMiningMetricsStore((s) => s.gpu_mining_status.is_mining);
     const selectedGpuPoolData = useConfigPoolsStore(getSelectedGpuPool);
     const availableGpuPools = useConfigPoolsStore(useShallow(getAvailableGpuPools));
 
@@ -38,22 +39,22 @@ export const GpuPoolsSettings = () => {
     const poolsOptions = useMemo(() => {
         return (availableGpuPools || []).map((pool) => ({
             label: pool.pool_name,
-            value: pool.pool_name,
+            value: pool.pool_type,
         }));
     }, [availableGpuPools]);
 
     const handlePoolChange = useCallback(async (value: string) => {
-        await changeGpuPool(value);
+        await changeGpuPool(value as GpuPools);
     }, []);
 
     const handlePoolConfigurationChange = useCallback(async (updatedConfig: BasePoolData) => {
         await changeGpuPoolConfiguration(updatedConfig);
     }, []);
 
-    const handleResetToDefaultPoolConfiguration = useCallback(async () => {
+    const handleResetToDefaultPoolConfiguration = async () => {
         if (!selectedGpuPoolData) return;
-        await resetGpuPoolConfiguration(selectedGpuPoolData.pool_name);
-    }, []);
+        await resetGpuPoolConfiguration(selectedGpuPoolData.pool_type);
+    };
 
     return (
         <SettingsGroupWrapper style={{ gap: '16px' }}>
@@ -70,7 +71,13 @@ export const GpuPoolsSettings = () => {
                 </SettingsGroupAction>
             </SettingsGroup>
 
-            {selectedGpuPoolData && <PoolStats poolStatus={pool_status} />}
+            {selectedGpuPoolData && (
+                <PoolStats
+                    poolStatus={pool_status}
+                    poolOrigin={selectedGpuPoolData.pool_origin}
+                    isMining={isGpuPoolEnabled && isMining}
+                />
+            )}
             <SettingsGroupWrapper $subGroup style={{ marginTop: '12px' }}>
                 <SettingsGroup>
                     <SettingsGroupTitle>
@@ -85,7 +92,7 @@ export const GpuPoolsSettings = () => {
                         <Select
                             options={poolsOptions}
                             onChange={handlePoolChange}
-                            selectedValue={selectedGpuPoolData?.pool_name}
+                            selectedValue={selectedGpuPoolData?.pool_type}
                             variant="bordered"
                             forceHeight={36}
                         />

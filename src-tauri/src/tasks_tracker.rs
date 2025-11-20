@@ -21,12 +21,13 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.use crate::UniverseAppState;
 
 use log::info;
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 use tari_shutdown::{Shutdown, ShutdownSignal};
 use tokio::sync::RwLock;
 use tokio_util::task::TaskTracker;
 
-static LOG_TARGET: &str = "tari::universe::tasks_tracker";
+use crate::LOG_TARGET_APP_LOGIC;
+
 static INSTANCE: LazyLock<TasksTrackers> = LazyLock::new(TasksTrackers::new);
 
 pub struct TaskTrackerUtil {
@@ -49,14 +50,22 @@ impl TaskTrackerUtil {
     pub async fn get_task_tracker(&self) -> TaskTracker {
         self.task_tracker.read().await.clone()
     }
-    pub async fn close(&self) {
-        info!(target: LOG_TARGET, "Triggering shutdown for {} processes", self.name);
+    pub async fn trigger_shutdown(&self) {
+        info!(target: LOG_TARGET_APP_LOGIC, "Triggering shutdown for {} processes", self.name);
         self.shutdown.write().await.trigger();
-        info!(target: LOG_TARGET, "Triggering task close for {} processes", self.name);
+    }
+
+    pub async fn wait_for_clousure(&self) {
+        info!(target: LOG_TARGET_APP_LOGIC, "Triggering task close for {} processes", self.name);
         self.task_tracker.read().await.close();
-        info!(target: LOG_TARGET, "Waiting for {} processes to finish", self.name);
+        info!(target: LOG_TARGET_APP_LOGIC, "Waiting for {} processes to finish | number of tasks: {}", self.name, self.task_tracker.read().await.len());
         self.task_tracker.read().await.wait().await;
-        info!(target: LOG_TARGET, "{} processes have finished", self.name);
+        info!(target: LOG_TARGET_APP_LOGIC, "{} processes have finished", self.name);
+    }
+
+    pub async fn close(&self) {
+        self.trigger_shutdown().await;
+        self.wait_for_clousure().await;
     }
 
     pub async fn replace(&self) {
@@ -66,23 +75,23 @@ impl TaskTrackerUtil {
 }
 
 pub struct TasksTrackers {
-    pub wallet_phase: TaskTrackerUtil,
-    pub hardware_phase: TaskTrackerUtil,
-    pub mining_phase: TaskTrackerUtil,
-    pub node_phase: TaskTrackerUtil,
-    pub core_phase: TaskTrackerUtil,
-    pub common: TaskTrackerUtil,
+    pub wallet_phase: Arc<TaskTrackerUtil>,
+    pub node_phase: Arc<TaskTrackerUtil>,
+    pub cpu_mining_phase: Arc<TaskTrackerUtil>,
+    pub gpu_mining_phase: Arc<TaskTrackerUtil>,
+    pub core_phase: Arc<TaskTrackerUtil>,
+    pub common: Arc<TaskTrackerUtil>,
 }
 
 impl TasksTrackers {
     fn new() -> Self {
         Self {
-            wallet_phase: TaskTrackerUtil::new("Wallet phase"),
-            hardware_phase: TaskTrackerUtil::new("Hardware phase"),
-            mining_phase: TaskTrackerUtil::new("Mining phase"),
-            node_phase: TaskTrackerUtil::new("Node phase"),
-            core_phase: TaskTrackerUtil::new("Core phase"),
-            common: TaskTrackerUtil::new("Common"),
+            wallet_phase: Arc::new(TaskTrackerUtil::new("Wallet phase")),
+            node_phase: Arc::new(TaskTrackerUtil::new("Node phase")),
+            cpu_mining_phase: Arc::new(TaskTrackerUtil::new("CPU Mining phase")),
+            gpu_mining_phase: Arc::new(TaskTrackerUtil::new("GPU Mining phase")),
+            core_phase: Arc::new(TaskTrackerUtil::new("Core phase")),
+            common: Arc::new(TaskTrackerUtil::new("Common")),
         }
     }
 
@@ -91,11 +100,20 @@ impl TasksTrackers {
     }
 
     pub async fn stop_all_processes(&self) {
-        self.common.close().await;
-        self.core_phase.close().await;
-        self.wallet_phase.close().await;
-        self.hardware_phase.close().await;
-        self.mining_phase.close().await;
-        self.node_phase.close().await;
+        // Trigger shutdown for all phases
+        self.common.trigger_shutdown().await;
+        self.core_phase.trigger_shutdown().await;
+        self.cpu_mining_phase.trigger_shutdown().await;
+        self.gpu_mining_phase.trigger_shutdown().await;
+        self.wallet_phase.trigger_shutdown().await;
+        self.node_phase.trigger_shutdown().await;
+
+        // Wait for all phases to finish
+        self.common.wait_for_clousure().await;
+        self.core_phase.wait_for_clousure().await;
+        self.cpu_mining_phase.wait_for_clousure().await;
+        self.gpu_mining_phase.wait_for_clousure().await;
+        self.wallet_phase.wait_for_clousure().await;
+        self.node_phase.wait_for_clousure().await;
     }
 }

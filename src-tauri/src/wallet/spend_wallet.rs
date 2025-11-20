@@ -28,7 +28,7 @@ use anyhow::{Context, Error, Result};
 use axum::async_trait;
 use log::{debug, info};
 use tari_common::configuration::Network;
-use tari_key_manager::mnemonic::{Mnemonic, MnemonicLanguage};
+use tari_common_types::seeds::mnemonic::{Mnemonic, MnemonicLanguage};
 use tari_shutdown::Shutdown;
 use tauri::{AppHandle, Manager};
 
@@ -42,9 +42,9 @@ use crate::process_adapter::{
 use crate::tasks_tracker::TasksTrackers;
 use crate::utils::commands_builder::CommandBuilder;
 use crate::utils::logging_utils::setup_logging;
+use crate::LOG_TARGET_APP_LOGIC;
 
 /// Log target for spend wallet module
-const LOG_TARGET: &str = "tari::universe::spend_wallet";
 const EXIT_CODE_ZERO: i32 = 0;
 
 /// SpendWallet provides functionality to handle one-sided transaction signing
@@ -120,7 +120,7 @@ impl SpendWallet {
             .map_err(|e| anyhow::anyhow!("Failed to execute signing command: {}", e))?;
 
         info!(
-            target: LOG_TARGET,
+            target: LOG_TARGET_APP_LOGIC,
             "Transaction signing completed with exit code: {exit_code}"
         );
 
@@ -185,7 +185,7 @@ impl SpendWallet {
             .context("Failed to start wallet process or collect output")?;
 
         debug!(
-            target: LOG_TARGET,
+            target: LOG_TARGET_APP_LOGIC,
             "Spend Wallet command '{}' execution completed with exit code: {}",
             command.name,
             exit_code
@@ -193,7 +193,7 @@ impl SpendWallet {
 
         if !allow_exit_codes.contains(&exit_code) {
             log::error!(
-                target: LOG_TARGET,
+                target: LOG_TARGET_APP_LOGIC,
                 "Command '{}' failed with exit code: {}.\n* Error: {}\n* Stdout: {}\n* Args: {:?}",
                 command.name,
                 exit_code,
@@ -269,7 +269,7 @@ impl SpendWallet {
 
     pub async fn get_binary_path(&self) -> Result<PathBuf, Error> {
         BinaryResolver::current()
-            .resolve_path_to_binary_files(Binaries::Wallet)
+            .get_binary_path(Binaries::Wallet)
             .await
             .context("Failed to resolve wallet binary path")
     }

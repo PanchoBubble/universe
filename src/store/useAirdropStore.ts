@@ -1,6 +1,6 @@
+import { create } from 'zustand';
 import type { ConfigBackendInMemory } from '@app/types/configs.ts';
 import type { XSpaceEvent } from '@app/types/ws';
-import { create } from './create';
 
 export const GIFT_GEMS = 5000;
 
@@ -180,12 +180,24 @@ export interface ReferrerProgressResponse {
     totals: CrewMembersTotals;
     memberImages: string[];
     minRequirements: MinRequirements;
+    members: {
+        name: string;
+        displayName: string;
+        image: string;
+        isCurrentlyMining: boolean;
+        lastActivityDate: string;
+    }[];
     membersToNudge: {
         id: string;
         name: string;
         displayName?: string;
         imageUrl?: string;
     }[];
+    rewardsConfig: {
+        referrerRewards: number;
+        referralRewards: number;
+        requirement: number;
+    };
 }
 
 export interface Reward {
@@ -236,7 +248,7 @@ const initialState: AirdropStoreState = {
     latestXSpaceEvent: null,
     uiSendRecvEnabled: true,
     crewQueryParams: {
-        status: 'all',
+        status: 'active',
         page: 1,
         limit: 20,
     },

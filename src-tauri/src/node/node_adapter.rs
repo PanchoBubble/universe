@@ -22,11 +22,13 @@
 
 use crate::ab_test_selector::ABTestSelector;
 use crate::node::node_manager::NodeType;
+use crate::node::utils::SyncProgressInfo;
 use crate::process_adapter::{HandleUnhealthyResult, HealthStatus, StatusMonitor};
+use crate::{LOG_TARGET_APP_LOGIC, LOG_TARGET_STATUSES};
 use anyhow::{anyhow, Error};
 use async_trait::async_trait;
 use minotari_node_grpc_client::grpc::{
-    BlockHeader, Empty, GetBlocksRequest, GetNetworkStateRequest, SyncState,
+    BlockHeader, Empty, GetBlocksRequest, GetNetworkStateRequest,
 };
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
@@ -42,17 +44,15 @@ use std::fmt::Write as _;
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 use tari_common::configuration::Network;
-use tari_core::transactions::tari_amount::MicroMinotari;
 use tari_crypto::ristretto::RistrettoPublicKey;
 use tari_shutdown::ShutdownSignal;
+use tari_transaction_components::tari_amount::MicroMinotari;
 use tari_utilities::hex::Hex;
 use tari_utilities::ByteArray;
 use tokio::sync::watch;
 use tokio::time::timeout;
 
 use crate::network_utils::{get_best_block_from_block_scan, get_block_info_from_block_scan};
-
-const LOG_TARGET: &str = "tari::universe::minotari_node_adapter";
 
 #[async_trait]
 pub trait NodeAdapter {
@@ -97,7 +97,6 @@ impl NodeAdapterService {
             .map(|m| m.best_block_height)
             .unwrap_or(0);
         let block_time = res.metadata.as_ref().map(|m| m.timestamp).unwrap_or(0);
-
         Ok(BaseNodeStatus {
             sha_network_hashrate: res.sha3x_estimated_hash_rate,
             tari_randomx_network_hashrate: res.tari_randomx_estimated_hash_rate,
@@ -155,7 +154,6 @@ impl NodeAdapterService {
         })
     }
 
-    #[allow(clippy::too_many_lines)]
     pub async fn wait_synced(
         &self,
         progress_params_tx: &watch::Sender<HashMap<String, String>>,
@@ -182,89 +180,18 @@ impl NodeAdapterService {
 
             let tip_res = tip.into_inner();
             let sync_progress = sync_progress.into_inner();
+            let sync_info =
+                SyncProgressInfo::from_sync_progress(&sync_progress, self.required_sync_peers);
 
-            let mut progress_params: HashMap<String, String> = HashMap::new();
-            let mut percentage = 0f64;
-
-            if sync_progress.state == SyncState::Startup as i32 {
-                percentage = sync_progress.initial_connected_peers as f64
-                    / f64::from(self.required_sync_peers);
-                progress_params.insert("step".to_string(), "Startup".to_string());
-                progress_params.insert(
-                    "initial_connected_peers".to_string(),
-                    sync_progress.initial_connected_peers.to_string(),
-                );
-                progress_params.insert(
-                    "required_peers".to_string(),
-                    self.required_sync_peers.to_string(),
-                );
-            }
-            if sync_progress.state == SyncState::Header as i32 {
-                percentage = sync_progress.local_height as f64 / sync_progress.tip_height as f64;
-                progress_params.insert("step".to_string(), "Header".to_string());
-                progress_params.insert(
-                    "local_header_height".to_string(),
-                    sync_progress.local_height.to_string(),
-                );
-                progress_params.insert(
-                    "tip_header_height".to_string(),
-                    sync_progress.tip_height.to_string(),
-                );
-                progress_params.insert("local_block_height".to_string(), "0".to_string());
-                progress_params.insert(
-                    "tip_block_height".to_string(),
-                    sync_progress.tip_height.to_string(),
-                );
-                // Keep these fields for old translations that have not been updated
-                progress_params.insert(
-                    "local_height".to_string(),
-                    sync_progress.local_height.to_string(),
-                );
-                progress_params.insert(
-                    "tip_height".to_string(),
-                    sync_progress.tip_height.to_string(),
-                );
-            }
-            if sync_progress.state == SyncState::Block as i32 {
-                percentage = sync_progress.local_height as f64 / sync_progress.tip_height as f64;
-                progress_params.insert("step".to_string(), "Block".to_string());
-                progress_params.insert(
-                    "local_header_height".to_string(),
-                    sync_progress.tip_height.to_string(),
-                );
-                progress_params.insert(
-                    "tip_header_height".to_string(),
-                    sync_progress.tip_height.to_string(),
-                );
-                progress_params.insert(
-                    "local_block_height".to_string(),
-                    sync_progress.local_height.to_string(),
-                );
-                progress_params.insert(
-                    "tip_block_height".to_string(),
-                    sync_progress.tip_height.to_string(),
-                );
-                // Keep these fields for old translations that have not been updated
-                progress_params.insert(
-                    "local_height".to_string(),
-                    sync_progress.local_height.to_string(),
-                );
-                progress_params.insert(
-                    "tip_height".to_string(),
-                    sync_progress.tip_height.to_string(),
-                );
-            }
-
-            progress_percentage_tx.send(percentage).ok();
-            progress_params_tx.send(progress_params).ok();
+            progress_percentage_tx.send(sync_info.percentage).ok();
+            progress_params_tx.send(sync_info.progress_params).ok();
 
             if tip_res.initial_sync_achieved
-                && tip_res
-                    .metadata
-                    .clone()
-                    .is_some_and(|metadata| metadata.best_block_height > 0)
+                && tip_res.metadata.clone().is_some_and(|metadata| {
+                    metadata.best_block_height > 0 && sync_info.percentage >= 1.0
+                })
             {
-                info!(target: LOG_TARGET, "Initial sync achieved");
+                info!(target: LOG_TARGET_APP_LOGIC, "Initial sync achieved");
                 let tip_height = match tip_res.metadata {
                     Some(metadata) => metadata.best_block_height,
                     None => 0,
@@ -311,12 +238,6 @@ impl NodeAdapterService {
     }
 
     pub async fn check_if_is_orphan_chain(&self) -> Result<bool, anyhow::Error> {
-        let BaseNodeStatus { is_synced, .. } = self.get_network_state().await?;
-        if !is_synced {
-            info!(target: LOG_TARGET, "Node is not synced, skipping orphan chain check");
-            return Ok(false);
-        }
-
         let network = Network::get_current_or_user_setting_or_default();
         let block_scan_tip = get_best_block_from_block_scan(network).await?;
         let heights: Vec<u64> = vec![
@@ -338,9 +259,9 @@ impl NodeAdapterService {
                 .any(|local_block| block_scan_block.1 == local_block.1)
             {
                 let local_block = local_blocks.iter().find(|b| b.0 == block_scan_block.0);
-                error!(target: LOG_TARGET, "Miner is stuck on orphan chain. Block at height: {} and hash: {} does not exist locally", block_scan_block.0, block_scan_block.1);
+                error!(target: LOG_TARGET_STATUSES, "Miner is stuck on orphan chain. Block at height: {} and hash: {} does not exist locally", block_scan_block.0, block_scan_block.1);
                 if let Some(local_block) = local_block {
-                    error!(target: LOG_TARGET, "Local block at height: {} and hash: {}", local_block.0, local_block.1);
+                    error!(target: LOG_TARGET_STATUSES, "Local block at height: {} and hash: {}", local_block.0, local_block.1);
                 }
                 return Ok(true);
             }
@@ -414,7 +335,7 @@ impl StatusMonitor for NodeStatusMonitor {
                                 .as_u64()
                                 > 3600
                         {
-                            warn!(target: LOG_TARGET, "Base node height has not changed in an hour");
+                            warn!(target: LOG_TARGET_STATUSES, "Base node height has not changed in an hour");
                             return HealthStatus::Unhealthy;
                         }
                     } else {
@@ -438,7 +359,7 @@ impl StatusMonitor for NodeStatusMonitor {
                 );
                 match self.node_service.get_identity().await {
                     Ok(identity) => {
-                        info!(target: LOG_TARGET, "{:?} Node checking base node identity success: {:?}", self.node_type, identity);
+                        info!(target: LOG_TARGET_STATUSES, "{:?} Node checking base node identity success: {:?}", self.node_type, identity);
                         return HealthStatus::Warning;
                     }
                     Err(e) => {
@@ -470,6 +391,7 @@ impl StatusMonitor for NodeStatusMonitor {
                     .join("peer_db"),
             )
             .await;
+
             let _unused = fs::remove_dir_all(
                 base_path
                     .join("node")
@@ -477,7 +399,15 @@ impl StatusMonitor for NodeStatusMonitor {
                     .join("libtor"),
             )
             .await;
+
             let _unused = fs::remove_dir_all(base_path.join("tor-data")).await;
+            let _unused = fs::remove_dir_all(
+                base_path
+                    .join("node")
+                    .join(Network::get_current().to_string().to_lowercase())
+                    .join("config"),
+            )
+            .await;
         }
 
         Ok(HandleUnhealthyResult::Continue)

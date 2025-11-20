@@ -25,7 +25,7 @@ use std::{collections::HashMap, fs, sync::LazyLock, time::SystemTime};
 use getset::{Getters, Setters};
 use serde::{Deserialize, Serialize};
 use tari_common_types::tari_address::TariAddress;
-use tari_core::transactions::tari_amount::MicroMinotari;
+use tari_transaction_components::tari_amount::MicroMinotari;
 use tauri::AppHandle;
 use tokio::sync::RwLock;
 
@@ -33,18 +33,17 @@ use crate::{
     configs::config_ui::{ConfigUI, ConfigUIContent},
     internal_wallet::TariWalletDetails,
     pin::PinLockerState,
+    LOG_TARGET_APP_LOGIC,
 };
 
 use super::trait_config::{ConfigContentImpl, ConfigImpl};
 
 static EXCHANGES_RECORD_NAME_FOR_EXTERNAL_ADDRESS_BOOK: &str = "Exchanges";
 
-static LOG_TARGET: &str = "tari::universe::config_wallet";
-
 static INSTANCE: LazyLock<RwLock<ConfigWallet>> =
     LazyLock::new(|| RwLock::new(ConfigWallet::new()));
 
-pub const WALLET_VERSION: i32 = 2;
+pub const WALLET_VERSION: u32 = 2;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ExternalTariAddressBookRecord {
@@ -70,7 +69,7 @@ impl WalletId {
 #[allow(clippy::struct_excessive_bools)]
 pub struct ConfigWalletContent {
     #[getset(get = "pub", set = "pub")]
-    version: i32,
+    version_counter: u32,
     #[getset(get = "pub", set = "pub")]
     tari_wallets: Vec<WalletId>,
     #[getset(get = "pub")]
@@ -103,7 +102,7 @@ pub struct ConfigWalletContent {
 impl Default for ConfigWalletContent {
     fn default() -> Self {
         Self {
-            version: 0,
+            version_counter: WALLET_VERSION,
             tari_wallets: Vec::new(), // Owned wallets` ids
             monero_address: "".to_string(),
             monero_address_is_generated: false,
@@ -185,18 +184,19 @@ impl ConfigWallet {
 
     pub async fn migrate() -> Result<(), anyhow::Error> {
         let config = ConfigWallet::content().await;
-        let current_version = *config.version();
+        let current_version = *config.version_counter();
 
         if current_version < WALLET_VERSION {
-            log::info!("Wallet Config needs migration {current_version:?} => {WALLET_VERSION}");
+            log::info!(target: LOG_TARGET_APP_LOGIC,"Wallet Config needs migration {current_version:?} => {WALLET_VERSION}");
 
-            ConfigWallet::update_field(ConfigWalletContent::set_version, WALLET_VERSION).await?;
+            ConfigWallet::update_field(ConfigWalletContent::set_version_counter, WALLET_VERSION)
+                .await?;
 
             return Ok(());
         }
 
         if *ConfigUI::content().await.was_staged_security_modal_shown() {
-            log::info!("Wallet Config needs 'set_was_staged_security_modal_shown' flag migration");
+            log::info!(target: LOG_TARGET_APP_LOGIC,"Wallet Config needs 'set_was_staged_security_modal_shown' flag migration");
             // Rename and move this flag here
             ConfigWallet::update_field(ConfigWalletContent::set_seed_backed_up, true).await?;
             // Clear this flag to prevent from re-migrating
@@ -238,21 +238,21 @@ impl ConfigImpl for ConfigWallet {
 
             match Self::_load_config() {
                 Ok(config_content) => {
-                    log::info!(target: LOG_TARGET, "[{}] [load_config] loaded config content", Self::_get_name());
+                    log::info!(target: LOG_TARGET_APP_LOGIC, "[{}] [load_config] loaded config content", Self::_get_name());
                     config_content
                 }
                 Err(e) => {
-                    log::error!(target: LOG_TARGET, "[{}] [load_config] error occured when loading config content: {e:?}", Self::_get_name());
-                    log::info!(target: LOG_TARGET, "* Wallet Config: {config_content_serialized}");
+                    log::error!(target: LOG_TARGET_APP_LOGIC, "[{}] [load_config] error occured when loading config content: {e:?}", Self::_get_name());
+                    log::info!(target: LOG_TARGET_APP_LOGIC, "* Wallet Config: {config_content_serialized}");
                     // Panic instead of creating default config
                     panic!("Failed to load wallet config: {e:?}");
                 }
             }
         } else {
-            log::debug!(target: LOG_TARGET, "[{}] [load_config] creating a new config content (file not found)", Self::_get_name());
+            log::debug!(target: LOG_TARGET_APP_LOGIC, "[{}] [load_config] creating a new config content (file not found)", Self::_get_name());
             let config_content = Self::Config::default();
             let _unused = Self::_save_config(config_content.clone()).inspect_err(|error| {
-                log::warn!(target: LOG_TARGET, "[{}] [save_config] error: {:?}", Self::_get_name(), error);
+                log::warn!(target: LOG_TARGET_APP_LOGIC, "[{}] [save_config] error: {:?}", Self::_get_name(), error);
             });
             config_content
         }

@@ -1,3 +1,192 @@
+🚀 TARI UNIVERSE v1.6.6: Seasons of Soon
+
+_November 11, 2025_
+
+🔄 Rolling out via auto-update
+
+Hey Tari fam,
+
+This release makes mining Tari more convenient than ever before! We've also fixed hashrate display issues, improved wallet balance updates, and improved handling of config files and error messages.
+
+✨ WHAT'S NEW & FIXED
+
+- 🔋 **Pause on battery mode** – Laptop users, this one's for you! Tari Universe now automatically pauses mining when you switch from being plugged in to battery, so you won't drain your laptop battery. As soon as you plug back in, mining resumes right where you left off. (Turn off in Settings)
+- ⏰ **Schedule your mining** – Take complete control of when Tari Universe mines. Set a custom schedule (and mode!) e.g., every night ludicrous from 9 PM to 6 AM. Mine during off-peak hours or when you're not using your computer.
+- 🪟 **System tray improvements** – You now have full control over how Tari Universe behaves when you close it. Choose to minimize to the system tray instead of fully exiting, keep mining in the background, and get a clear dialog explaining your options. On Windows, the taskbar icon now behaves like other tray apps for a cleaner experience.
+- 📊 **Accurate hashrate display** – Your CPU mining hashrate was showing inflated numbers because we were accidentally adding rather than averaging. Now you'll see the real hashrate that matches what mining pools report.
+- 💰 **Wallet balance updates instantly** – We've heard from many of you that available balance would get stuck at zero after sending transactions, sometimes for 40+ minutes.
+- 🔐 **Better PIN error feedback** – When you enter an incorrect PIN during the "Sync with Phone" flow, you'll now see a clear error message instead of wondering what went wrong.
+
+---
+
+🚀 TARI UNIVERSE v1.6.5: The Invisible Garden - Part 3
+
+_October 23, 2025_
+
+Hey Tari fam,
+
+The big news: you can now pause mining for 2 hours, 8 hours, or until you manually restart. Plus we've made system tray more informative and fixed a bunch of setup issues.
+
+✨ WHAT'S NEW & FIXED
+
+- **Pause mining** – Need a break? Pause mining for 2 hours, 8 hours, or until manual restart. Mining auto-resumes when the time's up.
+- **Better system tray** – Share count now displays in the menu so you can track your progress without opening the app. The Tari icon now appears in your main taskbar for quick access.
+- **Smarter mining fallbacks** – If merge mining (solo) fails to start, the app automatically falls back to pool mining so you keep earning.
+- **More reliable setup** – GPU mining phase no longer times out during downloads (increased to 15 minutes). Binary extraction now retries with exponential backoff if antivirus briefly locks files.
+- **Tower animation fixes** – Fixed the issue where the tower animation would appear faded on startup when Visual Mode was disabled. Tower now properly displays and animates based on your settings.
+- **Better stats** – Fixed Kryptex threshold formatting. Improved hashrate display with proper decimals across all ranges.
+- **Under the hood** – Updated to Tari core v5.1.0, upgraded error tracking with new Sentry integration, updated dependencies, improved telemetry for better bug tracking.
+
+---
+
+🚀 TARI UNIVERSE v1.6.4: The Invisible Garden — Part 2
+
+_October 20, 2025_
+
+Hey Tari fam,
+
+Quick hotfix! We've resolved the issue where pool rewards would stop updating in the app. If you thought you weren't earning, don't worry—you were! Your rewards were accumulating the whole time, they just weren't displaying properly.
+
+Everything should now update smoothly. Thanks for your patience! 💜🐜
+
+---
+
+🚀 TARI UNIVERSE v1.6.3: The Invisible Garden
+
+_October 13, 2025_
+
+Hey everyone,
+
+Following up on our previous update that made Universe less resource-intensive for lower-end laptops—resulting in a 30% increase in new miner retention—this release introduces a new low-power Eco mode and system tray experience that allows you to put mining in the background while you use your computer for other things! Plus we've packed in some thoughtful optimizations and polish that make everything smoother and smarter.
+
+✨ WHAT'S NEW & FIXED
+
+- **System tray mining control** – Clicking the close button now minimizes to system tray instead of shutting down. Control mining, check pool rewards, adjust settings, or fully exit, all from your taskbar. Open the app from the dock menu anytime.
+- **Memory optimization** – CPU mining in Eco mode now uses XMRig's light mode, saving 2 GB of RAM.
+- **Better stats display** – Kryptex pool stats now hide fields when data isn't available. Hashrate formatting improved with proper decimals for all ranges.
+- **Reliability fixes** – Pool configuration updates work correctly again. Base node no longer advertises un-dialable TCP addresses. All mining processes properly terminate when shutting down.
+- **Translation updates** – Updated all translations and added Brazilian Portuguese, bringing the total supported languages to 14! 🇧🇷
+
+This release marks a major step forward in how you interact with Tari Universe throughout your day. Happy mining! 💜🐢
+
+---
+
+🚀 TARI UNIVERSE v1.6.2: The Luminous Threshold
+
+_September 25, 2025_
+
+Hey Tari fam,
+
+This release is all about removing friction! We're making the first-time experience smoother for new users while fixing pain points that have been tripping up our veteran miners.
+
+✨ WHAT'S FIXED
+
+- **First-time experience** – GPU mining now automatically disables on systems with integrated graphics and less than 16 GB RAM to prevent performance issues. Advanced users can re-enable it in Settings if needed.
+- **Pool options** – Added Kryptex to the list of available mining pools for more choice and flexibility.
+- **GPU & antivirus** – Fixed pool switching issues and improved Windows Defender integration to prevent mining binaries from being flagged as false positives.
+- **Wallet reliability** – Transaction history now loads properly after switching between local and remote nodes, plus better handling of long transaction descriptions and wallet resets.
+- **Settings fixes** – Language dropdown now updates correctly when changed, exchange addresses save properly, and corrupted config files automatically recover.
+
+---
+
+🚀 TARI UNIVERSE v1.6.1: Hotfix — The Kingdom of All Waters Part 2
+
+_September 18, 2025_
+
+Hey Tari fam,
+
+🐓 Following up on the workaround we shared before the hard fork at block 95,000: this hotfix resolves the C29 pool address bug. If you didn't manage to apply the workaround in time, no worries—LuckyPool temporarily redirected the SHA-3 pool to C29 so you didn't miss out. With this update, Tari Universe now automatically defaults to the correct C29 pool address.
+
+✨ WHAT'S FIXED
+
+- 🎯 **Correct C29 Pool Connection** – Tari Universe now automatically connects to the right Cuckaroo29 pool address without any manual setup needed.
+- ⚡ **Faster GPU Switching** – When your GPU needs to switch miners, it now happens in 3 minutes instead of 30.
+- 🔧 **Smarter GPU Management** – Better fallback logic means if one GPU miner isn't working, the app intelligently switches to the best alternative for your hardware.
+- 🌐 **Pool Stats Fix** – Fixed the SHA-3x pool stats display so you can track your mining progress accurately.
+
+---
+
+🚀 TARI UNIVERSE v1.6.0: The Kingdom of All Waters
+
+_September 15, 2025_
+
+Hey Tari fam,
+
+Introducing Tari Universe v1.6.0 "The Kingdom of All Waters." This release is a huge step forward for the Tari community: the Cuckaroo29 hard fork is nearly upon us! At block 95,000, Tari becomes the first blockchain with dedicated mining lanes for every type of mining hardware. No matter what you're running, there's a lane built for you.
+
+This four-lane approach doesn't only make mining fairer, it makes the network incredibly secure by requiring attackers to control multiple mining hardware ecosystems simultaneously to successfully 51% attack the network.
+
+🛣️ **Four Mining Lanes** – Every miner gets their own dedicated space:
+
+- 🤝 **25% Tari RandomX merge-mining with Monero**
+- ⚡ **25% Tari RandomX mining** for nearly any desktop or laptop hardware
+- 🔧 **25% SHA-3x algorithm** for FPGA/ASIC miners (the "big" miners)
+- 🎮 **NEW - 25% Cuckaroo29 (C29) algorithm** for ASIC-resistant GPU mining (for desktop GPU miners)
+
+✨ WHAT'S NEW
+
+- **C29 Support**: GPU mining defaults to C29 pool mining (LuckyPool) if your system can support it.
+
+**Things to know:**
+- C29 requires 7+ GB VRAM and measures performance in Graphs per second (G/s) rather than Hashes per second (H/s).
+- It's memory-bound, so Tari Universe power levels won't have any effect (it's either on or off).
+- Tari Universe automatically switches to SHA-3x pool mining for GPUs with less VRAM.
+- Mac support for Cuckaroo29 mining coming in a future update
+
+---
+
+🚀 TARI UNIVERSE v1.5.17: Soon's Question
+
+_September 9, 2025_
+
+✨ WHAT'S NEW
+
+- 📝 **Quick Exit Survey** – If you close the app, we'll ask a couple of quick questions to help us prioritize what to fix next.
+
+---
+
+🚀 TARI UNIVERSE v1.5.15: Hotfix — Tor Process Fix
+
+_September 4, 2025_
+
+🔄 Rolling out via auto-update
+
+✨ WHAT'S FIXED
+
+- 🔧 **Tor Process Cleanup** – Enhanced our cleanup routines to properly terminate Tor processes that were preventing local node updates and causing lingering version incompatibilities.
+
+---
+
+🚀 TARI UNIVERSE v1.5.14: The Season of Light — Part 8
+
+_September 2, 2025_
+
+✨ WHAT'S NEW
+
+- 🔧 **Even Smarter Setup Process** – Completely redesigned setup with No Intro Screen and better error recovery. When things go wrong, you'll get clear options to restart individual components or send logs. The app can run with limited features if some modules fail (this was partially implemented in the previous release).
+- ⚡ **New "Turbo" Mining Mode** – We've added a new 🌪️ Turbo mode between Eco and Ludicrous! Your old Eco setting (10%) is now Turbo, and the new Eco mode uses just 1% CPU for ultra-light mining by default. This eliminates an initial source of pain for users where Eco mode was too intense for lower-end machines.
+- 🖥️ **Windows GPU Mining Fixes** – Enhanced support for tricky GPU setups with automatic driver detection, OpenCL package checking, and Windows Defender exclusions for mining files.
+- 🌐 **Performance Boost** – Massive reduction in network calls to remote nodes (up to 99% fewer requests) for snappier performance and less server load.
+- 🎨 **Polish & Fixes** – Better dark mode support, improved user avatars, fixed node switching issues. Note: We are aware of a UI issue with Remote + Local mode (falling back to Local when you are sync'd), which is that your sync progress is not displayed in the UI.
+- 👉 **Base Node Update** – 5.0.0 fixes the recent spike in frag and prepares the network for Cuckaroo (C29), Along with many other under-the-hood improvements.
+
+---
+
+🚀 TARI UNIVERSE v1.5.12: The Season of Light — Part 7
+
+_August 25, 2025_
+
+✨ WHAT'S NEW
+
+- 🚀 **Auto-update Fix** – We've completely redesigned how auto-updates work to eliminate the race condition that was causing the app to freeze right before restarting.
+- ⚡ **Missing GPU crashes** – GPU miner files now only load when GPU detection is successful, preventing errors and improving startup reliability for all users. The app now gracefully handles systems without GPUs instead of crashing during startup.
+- 💳 **Failed tx signing fix** – Fixed an issue where failed transaction signing on spend wallets would lock funds on view wallets. Now if signing fails, the transaction gets properly cancelled to prevent locked UTXOs.
+- 🔧 **Wallet seed word fixes** – Seamless migration for wallet configurations when core address types change. Your existing wallet settings will automatically update to the new format without any action needed.
+- 🌐 **Tor crashes** – Prevented unnecessary Tor startup on remote nodes, improving connection speed and reliability for users on remote configurations.
+- ⬆️ **Core system upgrades** – Updated to Tari Core v5.0.0-pre.3 with improved stability and performance across all components.
+
+---
+
 🚀 TARI UNIVERSE v1.5.9: The Season of Light — Part 6½ Hotfix
 
 _August 14, 2025_

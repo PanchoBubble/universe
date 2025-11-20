@@ -20,8 +20,6 @@
 //  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 //  USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import { colorsAlpha } from './colorsAlpha.ts';
-
 const success = {
     50: '#E6FAF6',
     100: '#a1d2c1',
@@ -112,9 +110,9 @@ const greyscale = {
     150: '#CACACA',
     200: '#AFAFAF',
     300: '#959595',
-    400: '#7A7A7A',
+    400: '#7D7D7D',
     500: '#606060',
-    600: '#454545',
+    600: '#313131',
     700: '#2B2B2B',
     800: '#111111',
     900: '#080808',
@@ -136,14 +134,14 @@ const tariPurple = {
 
 const teal = {
     50: '#F1FAF9',
-    100: '#DBF2F1',
+    100: '#daf5ed',
     200: '#BBE6E5',
     300: '#88D3D3',
     400: '#55B9BB',
     500: '#3A9DA0',
     600: '#338187',
-    700: '#2F686F',
-    800: '#2D575D',
+    700: '#266e5b',
+    800: '#2F686F',
     900: '#294A50',
     950: '#172F35',
 };
@@ -215,7 +213,7 @@ const red = {
     700: '#B9291C',
     800: '#A2281D',
     900: '#7F251D',
-    950: '#450F0A',
+    950: '#310101',
 };
 
 const brightRed = {
@@ -230,19 +228,6 @@ const brightRed = {
     800: '#740101',
     900: '#450F0A',
     950: '#3a0000',
-};
-
-const ramp = {
-    1: '#1CCF31',
-    2: '#50CC27',
-    3: '#84C91E',
-    4: '#B8C614',
-    5: '#ECC30B',
-    6: '#F2A607',
-    7: '#F88903',
-    8: '#FF6C00',
-    9: '#FF4F00',
-    10: '#FF3300',
 };
 
 export const colors = {
@@ -261,12 +246,6 @@ export const colors = {
     warning,
     error,
     brightGreen,
-};
-
-export const colorsAll = {
-    ...colorsAlpha,
-    ...colors,
-    ramp,
 };
 
 export type Colours = typeof colors;

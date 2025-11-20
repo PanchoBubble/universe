@@ -2,7 +2,7 @@ import i18n from 'i18next';
 import { Ref, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import NumberFlow from '@number-flow/react';
-import { useConfigUIStore, useMiningMetricsStore, useUIStore } from '@app/store';
+import { useConfigUIStore, useNodeStore, useUIStore } from '@app/store';
 import SuccessAnimation from '../SuccessAnimation/SuccessAnimation';
 import SyncData from '@app/containers/navigation/components/MiningTiles/components/SyncData/SyncData.tsx';
 import LoadingDots from '@app/components/elements/loaders/LoadingDots.tsx';
@@ -23,9 +23,12 @@ import {
     NumberUnit,
 } from './styles';
 import { UseInteractionsReturn } from '@floating-ui/react';
-import { setAnimationState, animationStatus } from '@tari-project/tari-tower';
+import { setAnimationState, getCurrentAnimationState } from '@tari-project/tari-tower';
 import { PoolType } from '@app/store/useMiningPoolsStore.ts';
 import { clearCurrentSuccessValue } from '@app/store/actions/miningPoolsStoreActions.ts';
+import { AppModuleState, AppModuleStatus } from '@app/store/types/setup';
+import { setDialogToShow } from '@app/store/actions/uiStoreActions';
+import alertEmoji from '/assets/img/icons/emoji/alert_emoji.png';
 
 interface Props {
     title: PoolType;
@@ -42,6 +45,7 @@ interface Props {
     isSoloMining?: boolean;
     tooltipTriggerRef?: Ref<HTMLDivElement>;
     getReferenceProps?: UseInteractionsReturn['getReferenceProps'];
+    minerModuleState: AppModuleState;
 }
 
 export default function Tile({
@@ -59,17 +63,19 @@ export default function Tile({
     tooltipTriggerRef,
     getReferenceProps,
     isSoloMining,
+    minerModuleState,
 }: Props) {
-    const animationState = animationStatus;
+    const isModuleFailed = minerModuleState?.status === AppModuleStatus.Failed;
     const visualMode = useConfigUIStore((s) => s.visual_mode);
+
     const towerInitalized = useUIStore((s) => s.towerInitalized);
-    const isConnectedToTariNetwork = useMiningMetricsStore((s) => s.isNodeConnected);
+    const isConnectedToTariNetwork = useNodeStore((s) => s.isNodeConnected);
     const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
 
-    const canAnimateTower = useMemo(
-        () => visualMode && towerInitalized && animationState === 'free' && !isLoading,
-        [animationState, visualMode, isLoading, towerInitalized]
-    );
+    const canAnimateTower = useMemo(() => {
+        const animationState = getCurrentAnimationState();
+        return visualMode && towerInitalized && animationState === 'FREE' && !isLoading;
+    }, [visualMode, isLoading, towerInitalized]);
 
     useEffect(() => {
         if (!successValue || isLoading) return;
@@ -77,16 +83,22 @@ export default function Tile({
         const resetTimer = setTimeout(() => {
             clearCurrentSuccessValue(title);
             setShowSuccessAnimation(false);
-        }, 5000);
+        }, 3000);
         return () => {
             clearTimeout(resetTimer);
         };
-    }, [isLoading, successValue, title, visualMode]);
+    }, [isLoading, successValue, title]);
+
+    const handleClick = () => {
+        if (isModuleFailed) {
+            setDialogToShow('failedModuleInitialization');
+        }
+    };
 
     useEffect(() => {
         if (!canAnimateTower) return;
         if (showSuccessAnimation) {
-            setAnimationState('success');
+            setAnimationState('success', true);
         }
     }, [canAnimateTower, showSuccessAnimation]);
 
@@ -129,20 +141,29 @@ export default function Tile({
     );
     const mainMarkup = !syncing && (
         <NumberGroup>
-            {isLoading ? <LoadingDots /> : numberMarkup}
+            {isLoading || isModuleFailed ? <LoadingDots /> : numberMarkup}
             <NumberLabel>{mainLabel}</NumberLabel>
         </NumberGroup>
     );
 
     return (
-        <Wrapper key={title} ref={tooltipTriggerRef} {...getReferenceProps?.()}>
+        <Wrapper
+            key={title}
+            ref={tooltipTriggerRef}
+            {...getReferenceProps?.()}
+            onClick={handleClick}
+            $isModuleFailed={isModuleFailed}
+        >
             <Inside $isSyncing={syncing || isLoading}>
                 <HeadingRow>
                     <LabelWrapper>
-                        <StatusDot $isMining={isMining} $isEnabled={isEnabled} $isSyncing={syncing || isLoading} />
+                        {isModuleFailed ? (
+                            <img src={alertEmoji} alt="Alert icon" />
+                        ) : (
+                            <StatusDot $isMining={isMining} $isEnabled={isEnabled} $isSyncing={syncing || isLoading} />
+                        )}
                         <LabelText>{title}</LabelText>
                     </LabelWrapper>
-
                     {pillMarkup}
                 </HeadingRow>
                 {syncMarkup}
@@ -150,7 +171,7 @@ export default function Tile({
             </Inside>
 
             <AnimatePresence>
-                {isMining && !isLoading && (
+                {isMining && !isLoading && !syncing && (
                     <AnimatedGlowPosition>
                         <AnimatedGlow />
                     </AnimatedGlowPosition>

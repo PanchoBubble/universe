@@ -23,6 +23,7 @@
 use getset::{Getters, Setters};
 use semver::Version;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::{sync::LazyLock, time::SystemTime};
 use tari_common::configuration::Network;
 use tauri::AppHandle;
@@ -30,7 +31,9 @@ use tokio::sync::RwLock;
 
 use crate::ab_test_selector::ABTestSelector;
 use crate::app_in_memory_config::{MinerType, DEFAULT_EXCHANGE_ID};
+use crate::event_scheduler::ScheduledEventInfo;
 use crate::node::node_manager::NodeType;
+use crate::shutdown_manager::ShutdownMode;
 use crate::utils::rand_utils;
 
 use super::trait_config::{ConfigContentImpl, ConfigImpl};
@@ -41,6 +44,7 @@ pub struct AirdropTokens {
     pub refresh_token: String,
 }
 
+pub const CORE_CONFIG_VERSION: u32 = 0;
 static INSTANCE: LazyLock<RwLock<ConfigCore>> = LazyLock::new(|| RwLock::new(ConfigCore::new()));
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Serialize, Deserialize, Clone)]
@@ -49,10 +53,8 @@ static INSTANCE: LazyLock<RwLock<ConfigCore>> = LazyLock::new(|| RwLock::new(Con
 #[derive(Getters, Setters)]
 #[getset(get = "pub", set = "pub")]
 pub struct ConfigCoreContent {
-    version: u32,
-    was_config_migrated: bool,
+    version_counter: u32,
     created_at: SystemTime,
-    is_p2pool_enabled: bool,
     use_tor: bool,
     allow_telemetry: bool,
     allow_notifications: bool,
@@ -63,13 +65,14 @@ pub struct ConfigCoreContent {
     mmproxy_use_monero_failover: bool,
     mmproxy_monero_nodes: Vec<String>,
     auto_update: bool,
-    p2pool_stats_server_port: Option<u16>,
     pre_release: bool,
     last_changelog_version: Version,
     airdrop_tokens: Option<AirdropTokens>,
     remote_base_node_address: String,
     node_type: NodeType,
     exchange_id: String,
+    scheduler_events: HashMap<String, ScheduledEventInfo>,
+    shutdown_mode: ShutdownMode,
 }
 
 fn default_monero_nodes() -> Vec<String> {
@@ -95,7 +98,7 @@ impl Default for ConfigCoreContent {
             .chars()
             .nth(0)
             .map(|c| {
-                if (c as u32) % 2 == 0 {
+                if (c as u32).is_multiple_of(2) {
                     ABTestSelector::GroupA
                 } else {
                     ABTestSelector::GroupB
@@ -104,10 +107,8 @@ impl Default for ConfigCoreContent {
             .unwrap_or(ABTestSelector::GroupA);
 
         Self {
-            version: 0,
-            was_config_migrated: false,
+            version_counter: CORE_CONFIG_VERSION,
             created_at: SystemTime::now(),
-            is_p2pool_enabled: true,
             use_tor: true,
             allow_telemetry: true,
             allow_notifications: false,
@@ -118,13 +119,14 @@ impl Default for ConfigCoreContent {
             mmproxy_use_monero_failover: false,
             mmproxy_monero_nodes: default_monero_nodes(),
             auto_update: true,
-            p2pool_stats_server_port: None,
             pre_release: false,
             last_changelog_version: Version::new(0, 0, 0),
             airdrop_tokens: None,
             remote_base_node_address,
             node_type: NodeType::default(),
             exchange_id: DEFAULT_EXCHANGE_ID.to_string(),
+            scheduler_events: HashMap::new(),
+            shutdown_mode: ShutdownMode::Tasktray,
         }
     }
 }
@@ -145,9 +147,9 @@ impl ConfigCore {
         let mut config = Self::current().write().await;
         config.load_app_handle(app_handle.clone()).await;
 
-        if config.content.version.eq(&0) && config.content.node_type.eq(&NodeType::Local) {
+        if config.content.version_counter.eq(&0) && config.content.node_type.eq(&NodeType::Local) {
             config.content.node_type = NodeType::RemoteUntilLocal;
-            config.content.version = 1;
+            config.content.version_counter = 1;
             let _unused = Self::_save_config(config._get_content().clone());
         };
     }

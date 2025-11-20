@@ -18,19 +18,22 @@ import { CheckIconWrapper } from '@app/components/transactions/components/TxInpu
 import CheckIcon from '@app/components/transactions/components/CheckIcon.tsx';
 import LoadingDots from '@app/components/elements/loaders/LoadingDots.tsx';
 import { setSeedlessUI, setShouldShowExchangeSpecificModal } from '@app/store/actions/uiStoreActions.ts';
-import { ToggleSwitch } from '@app/components/elements/ToggleSwitch.tsx';
-import { setAllowTelemetry, useConfigCoreStore } from '@app/store';
+import { ToggleSwitch } from '@app/components/elements/inputs/switch/ToggleSwitch.tsx';
 import { Typography } from '@app/components/elements/Typography.tsx';
 import { useFetchExchangeBranding } from '@app/hooks/exchanges/fetchExchangeContent.ts';
 import { useValidateTariAddress } from '@app/hooks/wallet/useValidate.ts';
 import { convertEthAddressToTariAddress } from '@app/store/actions/bridgeApiActions.ts';
 import { isAddress } from 'ethers';
+import { useTranslation } from 'react-i18next';
+import { useConfigCoreStore } from '@app/store/stores/config/useConfigCoreStore.ts';
+import { setAllowTelemetry } from '@app/store/actions/config/core.ts';
 
 interface ConnectFormFields {
     address: string;
 }
 
 export const Connect = () => {
+    const { t } = useTranslation(['airdrop'], { useSuspense: false });
     const { data, isPending } = useFetchExchangeBranding();
     const [address, setAddress] = useState('');
     const [isFocused, setIsFocused] = useState(false);
@@ -141,7 +144,7 @@ export const Connect = () => {
                     )}
                 </AddressInputWrapper>
                 <OptInWrapper>
-                    <Typography variant="p">{`Tari Universe would like to use analytics to improve your experience.`}</Typography>
+                    <Typography variant="p">{t('permissionNoGems.text')}</Typography>
                     <ToggleSwitch checked={allowTelemetry} onChange={handleToggle} />
                 </OptInWrapper>
                 <CTA
